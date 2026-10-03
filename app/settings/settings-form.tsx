@@ -7,10 +7,8 @@ import type { BusinessSettings } from "@/db/schema";
 import { useFormAction } from "@/components/use-form-action";
 import { updateSettings } from "./actions";
 
-const PLACEHOLDERS =
-  "{{business_name}} {{client_name}} {{client_contact}} {{invoice_number}} {{amount_due}} {{due_date}} {{payment_instructions}}";
 
-export function SettingsForm({ settings: s, smtpConfigured }: { settings: BusinessSettings; smtpConfigured: boolean }) {
+export function SettingsForm({ settings: s }: { settings: BusinessSettings }) {
   const { state, errors: e, onSubmit, pending } = useFormAction(updateSettings);
 
   return (
@@ -86,35 +84,6 @@ export function SettingsForm({ settings: s, smtpConfigured }: { settings: Busine
               rows={3}
             />
           </Field>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Email templates</CardTitle>
-          <CardDescription>
-            Placeholders: <code className="text-xs">{PLACEHOLDERS}</code>
-            <br />
-            SMTP is {smtpConfigured ? "configured" : <strong>not configured</strong>} (set SMTP_* in .env.local).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-4">
-            <Field label="Invoice email subject" htmlFor="invoiceEmailSubject">
-              <Input id="invoiceEmailSubject" name="invoiceEmailSubject" defaultValue={s.invoiceEmailSubject} />
-            </Field>
-            <Field label="Invoice email body" htmlFor="invoiceEmailBody">
-              <Textarea id="invoiceEmailBody" name="invoiceEmailBody" defaultValue={s.invoiceEmailBody} rows={9} />
-            </Field>
-          </div>
-          <div className="grid gap-4">
-            <Field label="Reminder email subject" htmlFor="reminderEmailSubject">
-              <Input id="reminderEmailSubject" name="reminderEmailSubject" defaultValue={s.reminderEmailSubject} />
-            </Field>
-            <Field label="Reminder email body" htmlFor="reminderEmailBody">
-              <Textarea id="reminderEmailBody" name="reminderEmailBody" defaultValue={s.reminderEmailBody} rows={9} />
-            </Field>
-          </div>
         </CardContent>
       </Card>
 

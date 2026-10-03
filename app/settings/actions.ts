@@ -58,10 +58,6 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
       invoicePrefix,
       nextInvoiceNumber: nextInvoiceNumber!,
       paymentInstructions: str(fd, "paymentInstructions"),
-      invoiceEmailSubject: str(fd, "invoiceEmailSubject"),
-      invoiceEmailBody: str(fd, "invoiceEmailBody"),
-      reminderEmailSubject: str(fd, "reminderEmailSubject"),
-      reminderEmailBody: str(fd, "reminderEmailBody"),
     })
     .where(eq(businessSettings.id, 1))
     .run();

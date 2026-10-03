@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { ActionButton } from "@/components/action-button";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Alert, Card, CardContent, CardHeader, CardTitle, PageHeader } from "@/components/ui/misc";
+import { Alert, Card, CardContent, PageHeader } from "@/components/ui/misc";
 import { getDb } from "@/db";
 import { formatDate, today } from "@/lib/dates";
 import { balanceCents, deriveStatus } from "@/lib/invoice-status";
 import { getInvoiceDetail } from "@/lib/invoices";
 import { formatCents } from "@/lib/money";
 import { deleteDraft, duplicate, unvoid, voidIt } from "../actions";
+import { PaymentsPanel, SentPanel } from "./payments-panel";
 
 export default async function InvoicePage({ params }: PageProps<"/invoices/[id]">) {
   const id = Number((await params).id);
@@ -76,21 +77,30 @@ export default async function InvoicePage({ params }: PageProps<"/invoices/[id]"
             <CardContent className="grid gap-3 text-sm">
               <Row label="Issued" value={formatDate(invoice.issuedOn)} />
               <Row label="Due" value={formatDate(invoice.dueOn)} />
-              <Row label="Sent" value={invoice.sentAt ? formatDate(invoice.sentAt.slice(0, 10)) : "Not yet"} />
               <hr />
               <Row label="Total" value={formatCents(d.totalCents)} />
               <Row label="Paid" value={formatCents(d.paidCents)} />
               <Row label="Balance due" value={formatCents(balance)} strong />
+              {!invoice.voidedAt && (
+                <>
+                  <hr />
+                  <SentPanel
+                    invoiceId={id}
+                    sentOn={invoice.sentAt?.slice(0, 10) ?? null}
+                    today={today()}
+                    canUndo={d.paidCents === 0}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Payments</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Recording payments, emailing, and &ldquo;mark as sent&rdquo; arrive in Phase 3.
-            </CardContent>
-          </Card>
+          <PaymentsPanel
+            invoiceId={id}
+            payments={d.payments}
+            balanceCents={Math.max(0, d.totalCents - d.paidCents)}
+            isVoid={!!invoice.voidedAt}
+            today={today()}
+          />
         </div>
         <Card className="overflow-hidden">
           <iframe

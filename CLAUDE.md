@@ -5,7 +5,7 @@
 Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phase 2 done** (clients, invoices, line items, invoice PDF). Commands marked *(Phase N)* don't
+> Status: **Phase 3 done** (mark as sent, payments, derived status). Commands marked *(Phase N)* don't
 > exist yet.
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
@@ -57,7 +57,7 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
 - Tailwind + shadcn/ui (copied components, only the ones we use).
 - Invoice PDFs: `@react-pdf/renderer`, server-side.
 - Report PDFs: print stylesheet + the browser's "Save as PDF". No server-side PDF for reports.
-- Email: Nodemailer over SMTP (Gmail app password).
+- No email sending (owner's decision). Invoices are downloaded as PDF and sent by hand.
 - Backup zip: `fflate` (zero-dependency). DB snapshot via `better-sqlite3`'s `db.backup()`, so
   a live WAL database is never copied mid-write.
 - Tests: Vitest. Money math, status derivation, and reports are pure and unit-tested; DB tests
@@ -87,7 +87,7 @@ uploads/             receipts + logo (gitignored)
 ## Data model (summary)
 
 - `business_settings` (single row): name, address, email, phone, logo path, default terms days,
-  invoice prefix + next number, payment instructions, email subject/body templates.
+  invoice prefix + next number, payment instructions. (Email template columns exist but are unused.)
 - `clients`: name, contact name, email, billing address, `default_rate_cents` (pre-fills invoice
   lines), notes, `archived_at`. Deletable only when nothing references them; otherwise archive.
 - `invoices`: number (unique), client, `issued_on`, `due_on`, notes, `sent_at`, `voided_at`,
@@ -96,7 +96,9 @@ uploads/             receipts + logo (gitignored)
 - `invoice_line_items`: description, `quantity_milli`, `unit_price_cents`, `amount_cents`,
   `sort_order`.
 - `payments`: invoice, `received_on`, `amount_cents`, method (venmo|check|cash|ach_zelle|other),
-  reference, notes, `voided_at`.
+  reference, notes, `voided_at`. Rules in `lib/payments.ts`: no overpayment, no future dates, a
+  payment on a draft marks it sent on the payment date, "un-send" only with no active payments.
+  Manual `sent_at` is stored as noon UTC of the chosen date (`sentAtFor`).
 - `expenses`: `paid_on`, vendor, category, `amount_cents`, payment method, description,
   receipt path, optional client, timestamps.
 - `expense_categories`: name, `schedule_c_line`, `archived_at`.
@@ -127,11 +129,6 @@ npm run backup         # (Phase 6) same as the Backup button: zip db + uploads i
 DATABASE_PATH=./data/ledger.db
 UPLOADS_DIR=./uploads
 BACKUP_DIR=/path/to/cloud-synced/folder
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_USER=you@gmail.com
-SMTP_PASS=<gmail app password>
-SMTP_FROM="Your Business <you@gmail.com>"
 ```
 
 ## Running day to day
@@ -171,7 +168,8 @@ SMTP_FROM="Your Business <you@gmail.com>"
 
 1. ✅ Setup, schema + migrations + seeded categories, settings page, money/date libs + tests.
 2. ✅ Clients + invoices + line items + invoice PDF.
-3. Payments + derived status + email sending + mark as sent + reminders.
+3. ✅ Mark as sent + payments (partial, void) + derived status. Email sending and reminders were
+   dropped: the owner sends the PDF manually (~5 invoices/year). Nodemailer is not a dependency.
 4. Expenses (CRUD, receipts, filters) + other income.
 5. Dashboard + reports + CSV/print export.
 6. Backup, full CSV export, demo DB/seed/wipe, README, polish.

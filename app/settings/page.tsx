@@ -10,14 +10,14 @@ export default function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Your business details appear on invoices and emails."
+        description="Your business details appear on every invoice."
         actions={
           <Link href="/settings/categories" className={buttonVariants({ variant: "outline" })}>
             Expense categories
           </Link>
         }
       />
-      <SettingsForm settings={settings} smtpConfigured={Boolean(process.env.SMTP_HOST && process.env.SMTP_USER)} />
+      <SettingsForm settings={settings} />
     </>
   );
 }
