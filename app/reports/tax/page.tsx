@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ReportHeader } from "@/components/report-header";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/form-controls";
@@ -68,7 +69,7 @@ export default async function TaxSummaryPage({ searchParams }: PageProps<"/repor
                   </TableRow>
                 )}
                 {r.lines.map((l) => (
-                  <LineRows key={l.line} line={l} />
+                  <LineRows key={l.line} line={l} year={year} />
                 ))}
                 <TableRow className="font-semibold">
                   <TableCell>28</TableCell>
@@ -101,8 +102,7 @@ export default async function TaxSummaryPage({ searchParams }: PageProps<"/repor
   );
 }
 
-function LineRows({ line: l }: { line: ReturnType<typeof taxReport>["lines"][number] }) {
-  const itemize = l.line === "27a" || l.categories.length > 1;
+function LineRows({ line: l, year }: { line: ReturnType<typeof taxReport>["lines"][number]; year: number }) {
   return (
     <>
       <TableRow>
@@ -110,17 +110,19 @@ function LineRows({ line: l }: { line: ReturnType<typeof taxReport>["lines"][num
         <TableCell>{l.label}</TableCell>
         <TableCell className="tabular text-right">{formatCents(l.cents)}</TableCell>
       </TableRow>
-      {itemize &&
-        l.categories.map((c) => (
-          <TableRow key={c.categoryId} className="text-muted-foreground">
-            <TableCell />
-            <TableCell className="pl-6 text-sm">
+      {/* Always name the categories behind a line, linked to their expenses for the year. */}
+      {l.categories.map((c) => (
+        <TableRow key={c.categoryId} className="text-muted-foreground">
+          <TableCell />
+          <TableCell className="pl-6 text-sm">
+            <Link href={`/expenses?from=${year}-01-01&to=${year}-12-31&category=${c.categoryId}`} className="hover:underline">
               {c.name}
-              {l.line === "27a" && <span className="ml-2 text-xs">(Part V)</span>}
-            </TableCell>
-            <TableCell className="tabular text-right text-sm">{formatCents(c.cents)}</TableCell>
-          </TableRow>
-        ))}
+            </Link>
+            {l.line === "27a" && <span className="ml-2 text-xs">(Part V)</span>}
+          </TableCell>
+          <TableCell className="tabular text-right text-sm">{formatCents(c.cents)}</TableCell>
+        </TableRow>
+      ))}
     </>
   );
 }

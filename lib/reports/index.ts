@@ -123,7 +123,7 @@ export function taxCsv(r: ReturnType<typeof taxReport>): Cell[][] {
     ["1", "Gross receipts", "", $(r.grossReceiptsCents)],
     ...r.lines.flatMap((l) => [
       [l.line, l.label, "", $(l.cents)] as Cell[],
-      ...(l.categories.length > 1 || l.line === "27a" ? l.categories.map((c) => ["", "", c.name, $(c.cents)] as Cell[]) : []),
+      ...l.categories.map((c) => ["", "", c.name, $(c.cents)] as Cell[]),
     ]),
     ["28", "Total expenses", "", $(r.totalExpensesCents)],
     ["", "Net (before any adjustments)", "", $(r.netCents)],
