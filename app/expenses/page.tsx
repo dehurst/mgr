@@ -116,7 +116,12 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="tabular text-right">{formatCents(r.amountCents)}</TableCell>
+                    <TableCell className="tabular text-right">
+                      {formatCents(r.amountCents)}
+                      {r.businessPct < 100 && r.scheduleCLine !== PERSONAL_LINE && (
+                        <div className="text-xs font-normal text-muted-foreground">{r.businessPct}% business</div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

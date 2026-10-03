@@ -4,6 +4,7 @@ import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import type { Db } from "@/db";
 import { clients, expenseCategories, expenses, invoices, otherIncome, payments } from "@/db/schema";
 import type { DateRange, DateStr } from "@/lib/dates";
+import { businessShareCents } from "@/lib/money";
 import { PERSONAL_LINE } from "@/lib/schedule-c";
 
 /** Money received (cash basis): a payment on an invoice, or other income. */
@@ -27,11 +28,25 @@ export type ExpenseRow = {
   categoryName: string;
   scheduleCLine: string;
   description: string;
+  businessPct: number;
 };
 
 /** Personal spending is recorded but is never a business expense. */
 export function isPersonal(row: { scheduleCLine: string }): boolean {
   return row.scheduleCLine === PERSONAL_LINE;
+}
+
+/**
+ * The single place an expense is split into business and personal parts: a personal category is
+ * all personal; otherwise the business-use % decides, and the remainder is personal.
+ */
+export function splitExpense(row: { amountCents: number; scheduleCLine: string; businessPct: number }): {
+  businessCents: number;
+  personalCents: number;
+} {
+  if (isPersonal(row)) return { businessCents: 0, personalCents: row.amountCents };
+  const businessCents = businessShareCents(row.amountCents, row.businessPct);
+  return { businessCents, personalCents: row.amountCents - businessCents };
 }
 
 /** Non-voided payments on non-voided invoices, plus non-voided other income, within the range. */
@@ -88,6 +103,7 @@ export function loadExpenses(db: Db, range: DateRange): ExpenseRow[] {
       categoryName: expenseCategories.name,
       scheduleCLine: expenseCategories.scheduleCLine,
       description: expenses.description,
+      businessPct: expenses.businessPct,
     })
     .from(expenses)
     .innerJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))

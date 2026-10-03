@@ -19,6 +19,7 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
     paymentMethod: str(fd, "paymentMethod"),
     description: str(fd, "description"),
     clientId: str(fd, "clientId"),
+    businessPct: str(fd, "businessPct"),
   });
   if (!parsed.ok) return { ok: false, errors: parsed.errors, message: "Please fix the highlighted fields." };
 

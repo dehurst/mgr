@@ -1,15 +1,15 @@
 import { sumCents } from "@/lib/money";
-import { isPersonal, type ExpenseRow } from "./data";
+import { isPersonal, splitExpense, type ExpenseRow } from "./data";
 
 export type CategoryTotal = { categoryId: number; name: string; scheduleCLine: string; cents: number; count: number };
 export type VendorTotal = { vendor: string; cents: number; count: number };
 
-/** Sorted by amount, largest first; ties by name. */
+/** Business share per category, sorted largest first; ties by name. Personal shares are excluded. */
 export function expensesByCategory(rows: ExpenseRow[]): CategoryTotal[] {
   const map = new Map<number, CategoryTotal>();
   for (const r of rows) {
     const t = map.get(r.categoryId) ?? { categoryId: r.categoryId, name: r.categoryName, scheduleCLine: r.scheduleCLine, cents: 0, count: 0 };
-    t.cents += r.amountCents;
+    t.cents += splitExpense(r).businessCents;
     t.count++;
     map.set(r.categoryId, t);
   }
@@ -22,7 +22,7 @@ export function expensesByVendor(rows: ExpenseRow[]): VendorTotal[] {
   for (const r of rows) {
     const key = r.vendor.trim().toLowerCase();
     const t = map.get(key) ?? { vendor: r.vendor.trim(), cents: 0, count: 0, spellings: new Map() };
-    t.cents += r.amountCents;
+    t.cents += splitExpense(r).businessCents;
     t.count++;
     t.spellings.set(r.vendor.trim(), (t.spellings.get(r.vendor.trim()) ?? 0) + 1);
     map.set(key, t);
@@ -32,7 +32,10 @@ export function expensesByVendor(rows: ExpenseRow[]): VendorTotal[] {
     .sort((a, b) => b.cents - a.cents || a.vendor.localeCompare(b.vendor));
 }
 
-/** Business expenses only; personal spending is reported separately. */
+/**
+ * Business expenses only (their business share). Personal spending, meaning the personal category
+ * plus the personal share of mixed-use expenses, is reported separately as `personalCents`.
+ */
 export function expenseReport(rows: ExpenseRow[]) {
   const business = rows.filter((r) => !isPersonal(r));
   const personal = rows.filter(isPersonal);
@@ -41,9 +44,11 @@ export function expenseReport(rows: ExpenseRow[]) {
     personal,
     byCategory: expensesByCategory(business),
     byVendor: expensesByVendor(business),
-    totalCents: sumCents(business.map((r) => r.amountCents)),
+    totalCents: sumCents(business.map((r) => splitExpense(r).businessCents)),
     count: business.length,
-    personalCents: sumCents(personal.map((r) => r.amountCents)),
+    personalCents: sumCents(rows.map((r) => splitExpense(r).personalCents)),
+    /** Mixed-use expenses (business % below 100). */
+    partialCount: business.filter((r) => r.businessPct < 100).length,
   };
 }
 
@@ -56,8 +61,9 @@ export function expensesByMonth(rows: ExpenseRow[], year: number): MonthTotal[] 
   for (const r of rows) {
     if (!r.date.startsWith(prefix)) continue;
     const m = months[Number(r.date.slice(5, 7)) - 1];
-    if (isPersonal(r)) m.personalCents += r.amountCents;
-    else m.businessCents += r.amountCents;
+    const part = splitExpense(r);
+    m.businessCents += part.businessCents;
+    m.personalCents += part.personalCents;
   }
   return months;
 }

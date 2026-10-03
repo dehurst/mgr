@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { Alert, Card, CardContent } from "@/components/ui/misc";
@@ -8,6 +9,7 @@ import { useFormAction } from "@/components/use-form-action";
 import { EXPENSE_PAYMENT_METHODS, type Expense } from "@/db/schema";
 import { centsToInput } from "@/lib/money";
 import { EXPENSE_METHOD_LABELS } from "@/lib/payment-methods";
+import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { saveExpense } from "./actions";
 
 type Option = { id: number; name: string };
@@ -20,12 +22,22 @@ export function ExpenseForm({
   defaults,
 }: {
   expense?: Expense;
-  categories: (Option & { archivedAt: string | null })[];
+  categories: (Option & { archivedAt: string | null; businessPct: number; scheduleCLine: string })[];
   clients: Option[];
   vendors: string[];
   defaults: { paidOn: string; paymentMethod: string };
 }) {
   const { state, errors: e, onSubmit, pending } = useFormAction(saveExpense.bind(null, expense?.id ?? null));
+  const [categoryId, setCategoryId] = useState(String(expense?.categoryId ?? ""));
+  const [businessPct, setBusinessPct] = useState(String(expense?.businessPct ?? 100));
+  const category = categories.find((c) => String(c.id) === categoryId);
+  const isPersonalCategory = category?.scheduleCLine === PERSONAL_LINE;
+  // Picking a category pre-fills its default business-use %; it can still be changed per expense.
+  const changeCategory = (id: string) => {
+    setCategoryId(id);
+    const c = categories.find((x) => String(x.id) === id);
+    if (c) setBusinessPct(String(c.businessPct));
+  };
 
   return (
     <form onSubmit={onSubmit} className="grid gap-6">
@@ -54,7 +66,7 @@ export function ExpenseForm({
             />
           </Field>
           <Field label="Category" htmlFor="categoryId" error={e.categoryId}>
-            <Select id="categoryId" name="categoryId" defaultValue={expense?.categoryId ?? ""} required>
+            <Select id="categoryId" name="categoryId" value={categoryId} onChange={(ev) => changeCategory(ev.target.value)} required>
               <option value="">Choose…</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -63,6 +75,21 @@ export function ExpenseForm({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field
+            label="Business use %"
+            htmlFor="businessPct"
+            error={e.businessPct}
+            hint={isPersonalCategory ? "Personal category: not counted as a business expense." : "The rest counts as personal spending."}
+          >
+            <Input
+              id="businessPct"
+              name="businessPct"
+              inputMode="numeric"
+              value={isPersonalCategory ? "0" : businessPct}
+              onChange={(ev) => setBusinessPct(ev.target.value)}
+              disabled={isPersonalCategory}
+            />
           </Field>
           <Field label="Paid with" htmlFor="paymentMethod" error={e.paymentMethod}>
             <Select id="paymentMethod" name="paymentMethod" defaultValue={expense?.paymentMethod ?? defaults.paymentMethod}>

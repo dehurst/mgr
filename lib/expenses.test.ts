@@ -2,7 +2,7 @@ import { eq, ne } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { openDb, type Db } from "@/db";
 import { clients, expenseCategories, expenses, otherIncome } from "@/db/schema";
-import { categoryOptions, checkCategory, listExpenses, parseExpenseForm, recentVendors } from "./expenses";
+import { applyBusinessPctToCategory, categoryOptions, checkCategory, listExpenses, parseExpenseForm, recentVendors } from "./expenses";
 import { listOtherIncome, parseOtherIncomeForm } from "./other-income";
 
 let db: Db;
@@ -33,10 +33,13 @@ describe("parseExpenseForm", () => {
     paymentMethod: "business_card",
     description: "",
     clientId: "",
+    businessPct: "",
   };
-  it("parses cents and optional client", () => {
+  it("parses cents, optional client, and business % (blank = 100)", () => {
     const r = parseExpenseForm(raw);
-    expect(r.ok && r.input).toMatchObject({ amountCents: 5999, clientId: null });
+    expect(r.ok && r.input).toMatchObject({ amountCents: 5999, clientId: null, businessPct: 100 });
+    const pct = parseExpenseForm({ ...raw, businessPct: "40%" });
+    expect(pct.ok && pct.input.businessPct).toBe(40);
     const r2 = parseExpenseForm({ ...raw, clientId: "3" });
     expect(r2.ok && r2.input.clientId).toBe(3);
   });
@@ -48,6 +51,9 @@ describe("parseExpenseForm", () => {
     [{ categoryId: "" }, "categoryId"],
     [{ paidOn: "2026-02-29" }, "paidOn"],
     [{ paymentMethod: "crypto" }, "paymentMethod"],
+    [{ businessPct: "0" }, "businessPct"],
+    [{ businessPct: "101" }, "businessPct"],
+    [{ businessPct: "40.5" }, "businessPct"],
   ])("rejects %j", (over, field) => {
     const r = parseExpenseForm({ ...raw, ...over });
     expect(!r.ok && r.errors[field]).toBeTruthy();
@@ -99,6 +105,22 @@ describe("categories", () => {
     expect(checkCategory(db, 99999)).toMatch(/no longer exists/);
     expect(categoryOptions(db).some((c) => c.id === catA)).toBe(false);
     expect(categoryOptions(db, catA).some((c) => c.id === catA)).toBe(true);
+  });
+});
+
+describe("applyBusinessPctToCategory", () => {
+  it("updates only that category's expenses and reports how many changed", () => {
+    add("2026-01-01", 100, catA);
+    add("2026-02-01", 100, catA);
+    add("2026-02-01", 100, catB);
+    expect(applyBusinessPctToCategory(db, catA, 40)).toBe(2);
+    expect(applyBusinessPctToCategory(db, catA, 40)).toBe(0); // already 40
+    const pcts = db.select({ c: expenses.categoryId, p: expenses.businessPct }).from(expenses).all();
+    expect(pcts.filter((x) => x.c === catA).every((x) => x.p === 40)).toBe(true);
+    expect(pcts.find((x) => x.c === catB)!.p).toBe(100);
+    const r = listExpenses(db, { range: { from: "2026-01-01", to: "2026-12-31" } });
+    expect(r.totalCents).toBe(40 + 40 + 100);
+    expect(r.personalCents).toBe(60 + 60);
   });
 });
 

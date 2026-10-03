@@ -1,5 +1,5 @@
 import { sumCents } from "@/lib/money";
-import { isPersonal, type ExpenseRow, type IncomeRow } from "./data";
+import { isPersonal, splitExpense, type ExpenseRow, type IncomeRow } from "./data";
 import { expensesByCategory, type CategoryTotal } from "./expenses";
 
 export type Pnl = {
@@ -9,7 +9,7 @@ export type Pnl = {
   expensesByCategory: CategoryTotal[];
   expensesCents: number;
   netCents: number;
-  /** Personal spending in the rows, excluded from expenses and net. */
+  /** Personal spending (personal category + personal share of mixed-use), excluded from net. */
   personalCents: number;
 };
 
@@ -27,6 +27,6 @@ export function computePnl(income: IncomeRow[], expenses: ExpenseRow[]): Pnl {
     expensesByCategory: byCat,
     expensesCents,
     netCents: incomeCents - expensesCents,
-    personalCents: sumCents(expenses.filter(isPersonal).map((r) => r.amountCents)),
+    personalCents: sumCents(expenses.map((r) => splitExpense(r).personalCents)),
   };
 }

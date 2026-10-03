@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  businessShareCents,
   centsToInput,
   formatCents,
   formatQuantity,
@@ -134,5 +135,22 @@ describe("sumCents", () => {
     expect(sumCents([100, 250, -50])).toBe(300);
     expect(sumCents([])).toBe(0);
     expect(() => sumCents([1, 0.5])).toThrow(TypeError);
+  });
+});
+
+describe("businessShareCents", () => {
+  it("takes a whole-number percent, rounding half up, and the parts add back exactly", () => {
+    expect(businessShareCents(200_00, 40)).toBe(80_00);
+    expect(businessShareCents(197_29, 40)).toBe(78_92); // 7891.6 -> 7892
+    expect(businessShareCents(1, 50)).toBe(1); // 0.5 -> 1
+    expect(businessShareCents(1, 49)).toBe(0);
+    expect(businessShareCents(123_45, 100)).toBe(123_45);
+    for (const [a, p] of [[197_29, 40], [1, 33], [999_99, 7]]) {
+      expect(businessShareCents(a, p) + (a - businessShareCents(a, p))).toBe(a);
+    }
+  });
+  it("rejects bad percents", () => {
+    expect(() => businessShareCents(100, 101)).toThrow(RangeError);
+    expect(() => businessShareCents(100, 12.5)).toThrow(RangeError);
   });
 });

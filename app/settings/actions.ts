@@ -6,6 +6,8 @@ import { getDb } from "@/db";
 import { businessSettings, expenseCategories, invoices } from "@/db/schema";
 import { file, int, looksLikeEmail, str, type ActionState, type FieldErrors } from "@/lib/form";
 import { isCategoryLine } from "@/lib/schedule-c";
+import { applyBusinessPctToCategory, parseBusinessPct } from "@/lib/expenses";
+import type { Db } from "@/db";
 import { getSettings } from "@/lib/settings";
 import { deleteUpload, IMAGE_TYPES, saveUpload } from "@/lib/uploads";
 
@@ -67,14 +69,16 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
   return { ok: true, message: "Settings saved." };
 }
 
-function categoryFields(fd: FormData): { name: string; scheduleCLine: string; errors: FieldErrors } {
+function categoryFields(fd: FormData): { name: string; scheduleCLine: string; businessPct: number; errors: FieldErrors } {
   const errors: FieldErrors = {};
   const name = str(fd, "name");
   const scheduleCLine = str(fd, "scheduleCLine");
+  const businessPct = parseBusinessPct(str(fd, "businessPct"));
   if (!name) errors.name = "Name is required.";
   else if (name.length > 60) errors.name = "Keep it under 60 characters.";
   if (!isCategoryLine(scheduleCLine)) errors.scheduleCLine = "Pick a Schedule C line.";
-  return { name, scheduleCLine, errors };
+  if (businessPct === null) errors.businessPct = "Business % must be a whole number from 1 to 100.";
+  return { name, scheduleCLine, businessPct: businessPct ?? 100, errors };
 }
 
 function nameTaken(name: string, exceptId?: number): boolean {
@@ -88,21 +92,25 @@ function nameTaken(name: string, exceptId?: number): boolean {
 }
 
 export async function createCategory(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { name, scheduleCLine, errors } = categoryFields(fd);
+  const { name, scheduleCLine, businessPct, errors } = categoryFields(fd);
   if (!errors.name && nameTaken(name)) errors.name = "A category with that name already exists.";
   if (Object.keys(errors).length) return { ok: false, errors };
-  getDb().insert(expenseCategories).values({ name, scheduleCLine }).run();
+  getDb().insert(expenseCategories).values({ name, scheduleCLine, businessPct }).run();
   revalidatePath("/settings/categories");
   return { ok: true, message: `Added “${name}”.` };
 }
 
 export async function updateCategory(id: number, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { name, scheduleCLine, errors } = categoryFields(fd);
+  const { name, scheduleCLine, businessPct, errors } = categoryFields(fd);
   if (!errors.name && nameTaken(name, id)) errors.name = "A category with that name already exists.";
   if (Object.keys(errors).length) return { ok: false, errors };
-  getDb().update(expenseCategories).set({ name, scheduleCLine }).where(eq(expenseCategories.id, id)).run();
-  revalidatePath("/settings/categories");
-  return { ok: true, message: "Saved." };
+  const db = getDb();
+  const changed = db.transaction((tx) => {
+    tx.update(expenseCategories).set({ name, scheduleCLine, businessPct }).where(eq(expenseCategories.id, id)).run();
+    return str(fd, "applyToExisting") === "on" ? applyBusinessPctToCategory(tx as unknown as Db, id, businessPct) : 0;
+  });
+  revalidatePath("/", "layout");
+  return { ok: true, message: changed ? `Saved. ${changed} past expense${changed === 1 ? "" : "s"} set to ${businessPct}% business.` : "Saved." };
 }
 
 export async function setCategoryArchived(id: number, archived: boolean): Promise<void> {

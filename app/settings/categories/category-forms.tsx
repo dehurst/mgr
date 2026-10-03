@@ -29,6 +29,7 @@ export function AddCategoryForm() {
         <Select name="scheduleCLine" defaultValue="27a" className="w-96">
           <LineOptions />
         </Select>
+        <PctInput defaultValue={100} />
         <Button type="submit" disabled={pending}>
           Add
         </Button>
@@ -38,7 +39,16 @@ export function AddCategoryForm() {
   );
 }
 
-type Row = { id: number; name: string; scheduleCLine: string; archivedAt: string | null; expenseCount: number };
+type Row = { id: number; name: string; scheduleCLine: string; businessPct: number; archivedAt: string | null; expenseCount: number };
+
+function PctInput({ defaultValue, disabled }: { defaultValue: number; disabled?: boolean }) {
+  return (
+    <label className="flex items-center gap-1 text-sm" title="Default business-use % for new expenses in this category">
+      <Input name="businessPct" defaultValue={defaultValue} inputMode="numeric" className="w-16 text-right" disabled={disabled} aria-label="Business use %" />
+      <span className="text-muted-foreground">% business</span>
+    </label>
+  );
+}
 
 export function CategoryRow({ category: c }: { category: Row }) {
   const { state, errors, onSubmit, pending } = useFormAction(updateCategory.bind(null, c.id));
@@ -50,6 +60,7 @@ export function CategoryRow({ category: c }: { category: Row }) {
         <Select name="scheduleCLine" defaultValue={c.scheduleCLine} className="w-96">
           <LineOptions />
         </Select>
+        <PctInput defaultValue={c.businessPct} disabled={c.scheduleCLine === PERSONAL_LINE} />
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
           Save
         </Button>
@@ -65,6 +76,11 @@ export function CategoryRow({ category: c }: { category: Row }) {
         <span className="text-xs text-muted-foreground">
           {c.expenseCount} expense{c.expenseCount === 1 ? "" : "s"}
         </span>
+        {c.expenseCount > 0 && c.scheduleCLine !== PERSONAL_LINE && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input type="checkbox" name="applyToExisting" /> Apply % to past expenses too
+          </label>
+        )}
       </div>
       <Message state={state} />
     </form>

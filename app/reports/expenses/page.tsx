@@ -8,6 +8,7 @@ import { formatDate, today } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { rangeQuery, resolveRange } from "@/lib/range";
 import { expensesReportData } from "@/lib/reports";
+import { isPersonal, splitExpense } from "@/lib/reports/data";
 import { getSettings } from "@/lib/settings";
 
 export default async function ExpenseReportPage({ searchParams }: PageProps<"/reports/expenses">) {
@@ -26,7 +27,8 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
       : null;
   const txRows = drill ? drill.rows : r.business;
   const personalCategoryId = r.personal[0]?.categoryId;
-  const txTotal = txRows.reduce((s, e) => s + e.amountCents, 0);
+  // Business share for business rows; a drill into the personal category shows what was spent.
+  const txTotal = txRows.reduce((s, e) => s + (isPersonal(e) ? e.amountCents : splitExpense(e).businessCents), 0);
 
   return (
     <>
@@ -45,10 +47,13 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
 
         {r.personalCents > 0 && (
           <p className="text-sm text-muted-foreground">
-            Not included: {formatCents(r.personalCents)} of personal spending ({r.personal.length} item{r.personal.length === 1 ? "" : "s"}).{" "}
-            <Link href={`${base}&category=${personalCategoryId}`} className="no-print underline">
-              View
-            </Link>
+            Not included: {formatCents(r.personalCents)} of personal spending
+            {r.partialCount > 0 ? `, including the personal share of ${r.partialCount} mixed-use expense${r.partialCount === 1 ? "" : "s"}` : ""}.{" "}
+            {personalCategoryId && (
+              <Link href={`${base}&category=${personalCategoryId}`} className="no-print underline">
+                View personal-category items
+              </Link>
+            )}
           </p>
         )}
         <div className="grid gap-6 lg:grid-cols-2">
@@ -112,7 +117,14 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
                       </TableCell>
                       <TableCell>{e.categoryName}</TableCell>
                       <TableCell className="text-muted-foreground">{e.description}</TableCell>
-                      <TableCell className="tabular text-right">{formatCents(e.amountCents)}</TableCell>
+                      <TableCell className="tabular text-right">
+                        {formatCents(isPersonal(e) ? e.amountCents : splitExpense(e).businessCents)}
+                        {e.businessPct < 100 && !isPersonal(e) && (
+                          <div className="text-xs text-muted-foreground">
+                            {e.businessPct}% of {formatCents(e.amountCents)}
+                          </div>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -37,8 +37,8 @@ function pay(invoiceId: number, cents: number, receivedOn: string) {
   if (!r.ok) throw new Error(JSON.stringify(r.errors));
 }
 
-function expense(paidOn: string, cents: number, category: string, vendor = "Vendor") {
-  db.insert(expenses).values({ paidOn, vendor, categoryId: cat[category], amountCents: cents, paymentMethod: "business_card" }).run();
+function expense(paidOn: string, cents: number, category: string, vendor = "Vendor", businessPct = 100) {
+  db.insert(expenses).values({ paidOn, vendor, categoryId: cat[category], amountCents: cents, paymentMethod: "business_card", businessPct }).run();
 }
 
 beforeEach(() => {
@@ -143,6 +143,47 @@ describe("personal spending", () => {
     const tax = taxSummary([], rows);
     expect(tax.totalExpensesCents).toBe(100_00);
     expect(tax.lines.flatMap((l) => l.categories.map((c) => c.name))).toEqual(["Supplies"]);
+  });
+});
+
+describe("business-use percent", () => {
+  it("counts only the business share; the rest is personal spending everywhere", () => {
+    // Verizon $197.29 a month at 40% business, for two months.
+    expense("2026-01-15", 197_29, "Phone & internet", "Verizon", 40);
+    expense("2026-02-15", 197_29, "Phone & internet", "Verizon", 40);
+    expense("2026-02-20", 100_00, "Supplies", "Staples");
+    const rows = loadExpenses(db, Y2026);
+
+    const pnl = computePnl([], rows);
+    expect(pnl.expensesByCategory.find((c) => c.name === "Phone & internet")!.cents).toBe(2 * 78_92);
+    expect(pnl.expensesCents).toBe(2 * 78_92 + 100_00);
+    expect(pnl.personalCents).toBe(2 * (197_29 - 78_92));
+    // Business + personal = everything paid.
+    expect(pnl.expensesCents + pnl.personalCents).toBe(2 * 197_29 + 100_00);
+
+    const report = expenseReport(rows);
+    expect(report).toMatchObject({ totalCents: pnl.expensesCents, personalCents: pnl.personalCents, partialCount: 2 });
+    expect(report.byVendor.find((v) => v.vendor === "Verizon")!.cents).toBe(2 * 78_92);
+
+    const tax = taxSummary([], rows);
+    expect(tax.lines.find((l) => l.line === "25")!.cents).toBe(2 * 78_92);
+    expect(tax.totalExpensesCents).toBe(pnl.expensesCents);
+
+    const months = expensesByMonth(rows, 2026);
+    expect(months[1]).toEqual({ month: 2, businessCents: 78_92 + 100_00, personalCents: 197_29 - 78_92 });
+  });
+
+  it("applies the 50% meals limit to the business share", () => {
+    expense("2026-03-01", 100_00, "Meals (50% deductible)", "Diner", 50); // half business
+    const t = taxSummary([], loadExpenses(db, Y2026));
+    expect(t.mealsCents).toBe(50_00);
+    expect(t.mealsDeductibleCents).toBe(25_00);
+  });
+
+  it("a personal-category expense is all personal whatever its percent", () => {
+    expense("2026-03-01", 80_00, "Personal (not business)", "Target", 100);
+    const p = computePnl([], loadExpenses(db, Y2026));
+    expect(p).toMatchObject({ expensesCents: 0, personalCents: 80_00 });
   });
 });
 

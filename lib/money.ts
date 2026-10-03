@@ -89,3 +89,14 @@ export function sumCents(values: Iterable<number>): number {
 function assertCents(n: number): void {
   if (!Number.isSafeInteger(n)) throw new TypeError(`Expected an integer, got ${n}`);
 }
+
+/**
+ * The business share of an amount at a whole-number business-use percent, rounded half up.
+ * The personal share is always `amount - businessShareCents(...)`, so the parts add back exactly.
+ */
+export function businessShareCents(amountCents: number, businessPct: number): number {
+  assertCents(amountCents);
+  if (!Number.isInteger(businessPct) || businessPct < 0 || businessPct > 100) throw new RangeError(`Bad percent: ${businessPct}`);
+  if (businessPct === 100) return amountCents;
+  return Math.floor((amountCents * businessPct + 50) / 100);
+}

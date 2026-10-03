@@ -6,7 +6,7 @@ import { formatDate, priorRange, type DateRange, type DateStr } from "@/lib/date
 import { listInvoiceSummaries } from "@/lib/invoices";
 import { centsToInput } from "@/lib/money";
 import { AGING_BUCKETS, AGING_LABELS, computeAging } from "./aging";
-import { loadExpenses, loadIncome } from "./data";
+import { loadExpenses, loadIncome, splitExpense } from "./data";
 import { expenseReport } from "./expenses";
 import { incomeByClient } from "./income-by-client";
 import { computePnl, type Pnl } from "./pnl";
@@ -60,15 +60,15 @@ export function expensesCsv(r: ReturnType<typeof expensesReportData>): Cell[][] 
   return [
     [`Expense report, ${formatDate(r.range.from)} – ${formatDate(r.range.to)}`],
     [],
-    ["Date", "Vendor", "Category", "Schedule C line", "Description", "Amount"],
-    ...r.business.map((e) => [e.date, e.vendor, e.categoryName, e.scheduleCLine, e.description, $(e.amountCents)]),
-    ["", "", "", "", "Total business expenses", $(r.totalCents)],
+    ["Date", "Vendor", "Category", "Schedule C line", "Description", "Amount paid", "Business %", "Business amount"],
+    ...r.business.map((e) => [e.date, e.vendor, e.categoryName, e.scheduleCLine, e.description, $(e.amountCents), e.businessPct, $(splitExpense(e).businessCents)]),
+    ["", "", "", "", "Total business expenses", "", "", $(r.totalCents)],
     ...(r.personal.length
       ? [
           [],
           ["Personal (not business, excluded from totals)"],
           ...r.personal.map((e) => [e.date, e.vendor, e.categoryName, "", e.description, $(e.amountCents)]),
-          ["", "", "", "", "Total personal", $(r.personalCents)],
+          ["", "", "", "", "Total personal (incl. personal share of mixed-use expenses)", $(r.personalCents)],
         ]
       : []),
     [],

@@ -128,13 +128,19 @@ export const payments = sqliteTable(
   ],
 );
 
-export const expenseCategories = sqliteTable("expense_categories", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull().unique(),
-  scheduleCLine: text("schedule_c_line").notNull(),
-  archivedAt: text("archived_at"),
-  ...timestamps,
-});
+export const expenseCategories = sqliteTable(
+  "expense_categories",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull().unique(),
+    scheduleCLine: text("schedule_c_line").notNull(),
+    /** Default business-use % (1–100) pre-filled on new expenses in this category. */
+    businessPct: integer("business_pct").notNull().default(100),
+    archivedAt: text("archived_at"),
+    ...timestamps,
+  },
+  (t) => [check("categories_business_pct", sql`${t.businessPct} between 1 and 100`)],
+);
 
 export const expenses = sqliteTable(
   "expenses",
@@ -148,6 +154,8 @@ export const expenses = sqliteTable(
     amountCents: integer("amount_cents").notNull(),
     paymentMethod: text("payment_method", { enum: EXPENSE_PAYMENT_METHODS }).notNull(),
     description: text("description").notNull().default(""),
+    /** Business-use % (1–100). The rest of the amount counts as personal spending. */
+    businessPct: integer("business_pct").notNull().default(100),
     receiptPath: text("receipt_path"),
     clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
     ...timestamps,
@@ -156,6 +164,7 @@ export const expenses = sqliteTable(
     index("expenses_paid_idx").on(t.paidOn),
     index("expenses_category_idx").on(t.categoryId),
     check("expenses_positive", sql`${t.amountCents} > 0`),
+    check("expenses_business_pct", sql`${t.businessPct} between 1 and 100`),
   ],
 );
 

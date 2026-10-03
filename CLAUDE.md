@@ -43,6 +43,11 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
    `personal` (`PERSONAL_LINE`; the "Personal (not business)" category is added by migration 0002)
    are recorded but excluded from P&L, the expense report total, the tax summary, and the
    dashboard; screens and CSVs show them as a separate line. Use `isPersonal()` in report code.
+   **Mixed-use expenses** carry `business_pct` (1–100, default from the category's
+   `business_pct`). `splitExpense()` in `lib/reports/data.ts` is the only place an expense is split:
+   business share = `businessShareCents()` (rounded half up), personal share = the remainder, so
+   parts always add back to the amount paid. Reports count the business share; the personal share
+   joins personal spending. Meals' 50% limit applies to the business share.
 8. **Categories are archived, not deleted.** Expenses keep their `category_id`; renaming a
    category renames it in historical reports, which is intended. The Schedule C mapping lives on
    the category.
@@ -109,9 +114,12 @@ uploads/             receipts + logo (gitignored)
   reference, notes, `voided_at`. Rules in `lib/payments.ts`: no overpayment, no future dates, a
   payment on a draft marks it sent on the payment date, "un-send" only with no active payments.
   Manual `sent_at` is stored as noon UTC of the chosen date (`sentAtFor`).
-- `expenses`: `paid_on`, vendor, category, `amount_cents`, payment method, description,
-  receipt path, optional client, timestamps.
-- `expense_categories`: name, `schedule_c_line` (a Schedule C line, or `personal`), `archived_at`.
+- `expenses`: `paid_on`, vendor, category, `amount_cents` (full amount paid), `business_pct`,
+  payment method, description, receipt path, optional client, timestamps.
+- `expense_categories`: name, `schedule_c_line` (a Schedule C line, or `personal`), default
+  `business_pct`, `archived_at`. Saving a category can apply its % to past expenses.
+- Migration 0003 is hand-written (`ADD COLUMN`): drizzle-kit's table rebuild would have failed on
+  existing data. Check generated SQL before committing; prefer `ADD COLUMN` for new columns.
 - `other_income`: `received_on`, source, optional `client_id` (for the Jan–Sep 2026 QBO backfill:
   one entry per client per month), `amount_cents`, notes, `voided_at`. The UI hard-deletes; reports
   must still exclude `voided_at` rows.

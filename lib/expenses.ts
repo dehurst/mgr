@@ -1,10 +1,10 @@
-import { and, asc, desc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import { clients, EXPENSE_PAYMENT_METHODS, expenseCategories, expenses, type ExpensePaymentMethod } from "@/db/schema";
 import { isValidDate, type DateRange, type DateStr } from "./dates";
 import type { FieldErrors } from "./form";
 import { parseCents, sumCents } from "./money";
-import { PERSONAL_LINE } from "./schedule-c";
+import { splitExpense } from "./reports/data";
 
 export { EXPENSE_METHOD_LABELS } from "./payment-methods";
 
@@ -16,10 +16,11 @@ export type ExpenseInput = {
   paymentMethod: ExpensePaymentMethod;
   description: string;
   clientId: number | null;
+  businessPct: number;
 };
 
 export function parseExpenseForm(
-  raw: Record<"paidOn" | "vendor" | "categoryId" | "amount" | "paymentMethod" | "description" | "clientId", string>,
+  raw: Record<"paidOn" | "vendor" | "categoryId" | "amount" | "paymentMethod" | "description" | "clientId" | "businessPct", string>,
 ): { ok: true; input: ExpenseInput } | { ok: false; errors: FieldErrors } {
   const errors: FieldErrors = {};
   if (!isValidDate(raw.paidOn)) errors.paidOn = "Enter a valid date.";
@@ -31,10 +32,13 @@ export function parseExpenseForm(
   if (!(EXPENSE_PAYMENT_METHODS as readonly string[]).includes(raw.paymentMethod)) errors.paymentMethod = "Pick how you paid.";
   const clientId = raw.clientId ? Number(raw.clientId) : null;
   if (clientId !== null && (!Number.isSafeInteger(clientId) || clientId <= 0)) errors.clientId = "Pick a client or leave blank.";
+  const businessPct = parseBusinessPct(raw.businessPct);
+  if (businessPct === null) errors.businessPct = "Enter a whole number from 1 to 100.";
   if (Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
     input: {
+      businessPct: businessPct!,
       paidOn: raw.paidOn,
       vendor: raw.vendor,
       categoryId,
@@ -68,6 +72,7 @@ export function listExpenses(db: Db, f: ExpenseFilter) {
       amountCents: expenses.amountCents,
       paymentMethod: expenses.paymentMethod,
       description: expenses.description,
+      businessPct: expenses.businessPct,
       receiptPath: expenses.receiptPath,
       clientId: expenses.clientId,
       clientName: clients.name,
@@ -84,12 +89,12 @@ export function listExpenses(db: Db, f: ExpenseFilter) {
     )
     .orderBy(desc(expenses.paidOn), desc(expenses.id))
     .all();
-  const personal = rows.filter((r) => r.scheduleCLine === PERSONAL_LINE);
+  const parts = rows.map((r) => splitExpense(r));
   return {
     rows,
-    /** Business expenses only; personal spending is shown separately. */
-    totalCents: sumCents(rows.filter((r) => r.scheduleCLine !== PERSONAL_LINE).map((r) => r.amountCents)),
-    personalCents: sumCents(personal.map((r) => r.amountCents)),
+    /** Business share of the rows; personal spending (incl. personal shares) is shown separately. */
+    totalCents: sumCents(parts.map((p) => p.businessCents)),
+    personalCents: sumCents(parts.map((p) => p.personalCents)),
   };
 }
 
@@ -112,9 +117,33 @@ export function recentVendors(db: Db): string[] {
 /** Active categories plus (when editing) the expense's current one, even if archived. */
 export function categoryOptions(db: Db, includeId?: number) {
   return db
-    .select({ id: expenseCategories.id, name: expenseCategories.name, archivedAt: expenseCategories.archivedAt })
+    .select({
+      id: expenseCategories.id,
+      name: expenseCategories.name,
+      archivedAt: expenseCategories.archivedAt,
+      businessPct: expenseCategories.businessPct,
+      scheduleCLine: expenseCategories.scheduleCLine,
+    })
     .from(expenseCategories)
     .where(includeId ? or(isNull(expenseCategories.archivedAt), eq(expenseCategories.id, includeId)) : isNull(expenseCategories.archivedAt))
     .orderBy(asc(expenseCategories.name))
     .all();
+}
+
+/** Parse a business-use percent from a form: whole number 1–100. Blank means 100. */
+export function parseBusinessPct(raw: string): number | null {
+  const s = raw.trim().replace(/%$/, "");
+  if (s === "") return 100;
+  if (!/^\d{1,3}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= 100 ? n : null;
+}
+
+/** Set every expense in a category to the given business-use percent. Returns how many changed. */
+export function applyBusinessPctToCategory(db: Db, categoryId: number, businessPct: number): number {
+  return db
+    .update(expenses)
+    .set({ businessPct })
+    .where(and(eq(expenses.categoryId, categoryId), ne(expenses.businessPct, businessPct)))
+    .run().changes;
 }

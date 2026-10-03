@@ -13,6 +13,7 @@ export default function CategoriesPage() {
       id: expenseCategories.id,
       name: expenseCategories.name,
       scheduleCLine: expenseCategories.scheduleCLine,
+      businessPct: expenseCategories.businessPct,
       archivedAt: expenseCategories.archivedAt,
       expenseCount: count(expenses.id),
     })
@@ -28,7 +29,7 @@ export default function CategoriesPage() {
     <>
       <PageHeader
         title="Expense categories"
-        description="Each category maps to a Schedule C line for the tax summary. Archive instead of deleting so past expenses keep their category."
+        description="Each category maps to a Schedule C line for the tax summary, and has a default business-use % for new expenses (e.g. 40% for a phone you also use personally). Archive instead of deleting so past expenses keep their category."
         actions={
           <Link href="/settings" className={buttonVariants({ variant: "outline" })}>
             Back to settings
