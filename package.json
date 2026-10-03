@@ -21,6 +21,7 @@
     "update": "sh scripts/update.sh"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",

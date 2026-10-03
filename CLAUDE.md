@@ -5,7 +5,7 @@
 Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phase 1 done** (setup, schema, settings, categories). Commands marked *(Phase N)* don't
+> Status: **Phase 2 done** (clients, invoices, line items, invoice PDF). Commands marked *(Phase N)* don't
 > exist yet.
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
@@ -70,7 +70,10 @@ app/                 routes (dashboard, expenses, invoices, clients, reports, se
 components/          UI; components/ui = shadcn
 lib/money.ts         cents parsing/formatting/rounding
 lib/dates.ts         date strings, ranges (this month, last quarter, YTD, ...)
-lib/invoice-status.ts
+lib/invoice-status.ts deriveStatus, balance, totals (pure)
+lib/invoices.ts      invoice rules + queries; functions take `db` so tests use in-memory SQLite
+lib/clients.ts       client validation, totals (billed/paid/balance exclude drafts and voids)
+lib/pdf/             @react-pdf invoice template; served by app/invoices/[id]/pdf/route.ts
 lib/reports/         pure report functions (pnl, expenses, aging, income-by-client, tax)
 lib/csv.ts           CSV serialization
 db/schema.ts         Drizzle schema
@@ -85,9 +88,11 @@ uploads/             receipts + logo (gitignored)
 
 - `business_settings` (single row): name, address, email, phone, logo path, default terms days,
   invoice prefix + next number, payment instructions, email subject/body templates.
-- `clients`: name, contact name, email, billing address, notes, `archived_at`.
+- `clients`: name, contact name, email, billing address, `default_rate_cents` (pre-fills invoice
+  lines), notes, `archived_at`. Deletable only when nothing references them; otherwise archive.
 - `invoices`: number (unique), client, `issued_on`, `due_on`, notes, `sent_at`, `voided_at`,
-  timestamps. The number is assigned at creation from settings; deleted drafts leave gaps.
+  timestamps. The number is suggested from settings and editable (to re-enter old QBO invoices);
+  saving a number at or past the counter advances it. Deleted drafts leave gaps.
 - `invoice_line_items`: description, `quantity_milli`, `unit_price_cents`, `amount_cents`,
   `sort_order`.
 - `payments`: invoice, `received_on`, `amount_cents`, method (venmo|check|cash|ach_zelle|other),
@@ -165,7 +170,7 @@ SMTP_FROM="Your Business <you@gmail.com>"
 ## Build phases
 
 1. ✅ Setup, schema + migrations + seeded categories, settings page, money/date libs + tests.
-2. Clients + invoices + line items + invoice PDF.
+2. ✅ Clients + invoices + line items + invoice PDF.
 3. Payments + derived status + email sending + mark as sent + reminders.
 4. Expenses (CRUD, receipts, filters) + other income.
 5. Dashboard + reports + CSV/print export.

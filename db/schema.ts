@@ -57,6 +57,8 @@ export const clients = sqliteTable("clients", {
   contactName: text("contact_name").notNull().default(""),
   email: text("email").notNull().default(""),
   billingAddress: text("billing_address").notNull().default(""),
+  /** Pre-fills the rate on new invoice lines for this client. */
+  defaultRateCents: integer("default_rate_cents"),
   notes: text("notes").notNull().default(""),
   archivedAt: text("archived_at"),
   ...timestamps,

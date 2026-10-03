@@ -40,7 +40,7 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("grid gap-1.5", className)}>
+    <div className={cn("grid content-start gap-1.5", className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {error ? (

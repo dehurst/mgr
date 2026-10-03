@@ -1,0 +1,1 @@
+ALTER TABLE `clients` ADD `default_rate_cents` integer;
