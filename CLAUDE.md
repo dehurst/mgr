@@ -1,9 +1,16 @@
+@AGENTS.md
+
 # Ledger — personal bookkeeping app
 
 Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **pre-Phase 1.** Commands below are the target; they don't exist until Phase 1 lands.
+> Status: **Phase 1 done** (setup, schema, settings, categories). Commands marked *(Phase N)* don't
+> exist yet.
+
+**Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
+backfilled by hand. Invoice numbering continues QBO's sequence (set "Next number" in Settings).
+Line items are always hourly (quantity = hours). No one else bills under this business.
 
 ## Non-negotiable conventions
 
@@ -96,14 +103,14 @@ uploads/             receipts + logo (gitignored)
 npm run dev            # dev server against data/ledger.db
 npm run start:app      # migrate + build + start (day-to-day use), http://localhost:3000
 npm test               # vitest run
-npm run typecheck
+npm run typecheck      # next typegen + tsc (route PageProps/RouteContext types are generated)
 npm run lint
 npm run db:generate    # drizzle-kit: generate a migration after editing db/schema.ts
 npm run db:migrate     # apply migrations (also runs at startup)
-npm run demo           # seed + run against data/demo.db (never touches real data)
-npm run db:seed        # seed demo data into DATABASE_PATH (refuses if real data exists)
-npm run db:wipe        # wipe DATABASE_PATH (prompts; requires typing the db filename)
-npm run backup         # same as the Backup button: zip db + uploads into BACKUP_DIR
+npm run demo           # (Phase 6) seed + run against data/demo.db (never touches real data)
+npm run db:seed        # (Phase 6) seed demo data into DATABASE_PATH (refuses if real data exists)
+npm run db:wipe        # (Phase 6) wipe DATABASE_PATH (requires typing the db filename)
+npm run backup         # (Phase 6) same as the Backup button: zip db + uploads into BACKUP_DIR
 ```
 
 ## Environment (`.env.local`)
@@ -119,6 +126,19 @@ SMTP_PASS=<gmail app password>
 SMTP_FROM="Your Business <you@gmail.com>"
 ```
 
+## Next.js 16 notes (read AGENTS.md)
+
+- Root layout sets `dynamic = "force-dynamic"`: better-sqlite3 is synchronous, so without it pages
+  would be prerendered at build time with whatever was in the DB.
+- `params`/`searchParams` are Promises; use the generated `PageProps<"/route">` / `RouteContext` types.
+- Forms: client components use `useFormAction()` (`components/use-form-action.ts`), which submits via
+  `onSubmit` + `useActionState` so React doesn't reset inputs on validation errors. Server actions
+  return `ActionState` (`lib/form.ts`).
+- Uploaded files live in `UPLOADS_DIR` and are served by `app/files/[...path]/route.ts`
+  (path-traversal guarded). Only the relative path is stored in the DB.
+- UI components are hand-written in shadcn style (`components/ui/`); native `<select>` and
+  `confirm()` stand in for Radix Select/Dialog to keep dependencies down.
+
 ## Working rules
 
 - Keep dependencies minimal. Ask before adding a runtime dependency not listed above.
@@ -129,7 +149,7 @@ SMTP_FROM="Your Business <you@gmail.com>"
 
 ## Build phases
 
-1. Setup, schema + migrations + seeded categories, settings page, money/date libs + tests.
+1. ✅ Setup, schema + migrations + seeded categories, settings page, money/date libs + tests.
 2. Clients + invoices + line items + invoice PDF.
 3. Payments + derived status + email sending + mark as sent + reminders.
 4. Expenses (CRUD, receipts, filters) + other income.
