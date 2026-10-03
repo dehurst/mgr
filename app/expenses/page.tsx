@@ -97,15 +97,15 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
               </TableHeader>
               <TableBody>
                 {rows.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={r.scheduleCLine === PERSONAL_LINE ? "italic text-muted-foreground" : undefined}>
                     <TableCell className="whitespace-nowrap">{formatDate(r.paidOn)}</TableCell>
                     <TableCell>
-                      <Link href={`/expenses/${r.id}`} className="font-medium hover:underline">
+                      <Link href={`/expenses/${r.id}`} className={r.scheduleCLine === PERSONAL_LINE ? "hover:underline" : "font-medium hover:underline"}>
                         {r.vendor}
                       </Link>
                       {r.description && <div className="max-w-80 truncate text-xs text-muted-foreground">{r.description}</div>}
                     </TableCell>
-                    <TableCell className={r.scheduleCLine === PERSONAL_LINE ? "text-muted-foreground italic" : undefined}>{r.categoryName}</TableCell>
+                    <TableCell>{r.categoryName}</TableCell>
                     <TableCell className="text-muted-foreground">{EXPENSE_METHOD_LABELS[r.paymentMethod]}</TableCell>
                     <TableCell>
                       {r.receiptPath ? (
