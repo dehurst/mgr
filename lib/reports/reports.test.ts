@@ -117,9 +117,11 @@ describe("reconciliation", () => {
       const rows = loadExpenses(db, range);
       const pnl = computePnl([], rows).expensesCents;
       const report = expenseReport(rows);
-      const tax = taxSummary([], rows).totalExpensesCents;
+      const tax = taxSummary([], rows);
       expect(report.totalCents).toBe(pnl);
-      expect(tax).toBe(pnl);
+      // The tax summary differs from the P&L only by the non-deductible half of meals.
+      expect(tax.totalExpensesCents).toBe(pnl - (tax.mealsCents - tax.mealsDeductibleCents));
+      expect(tax.lines.reduce((s, l) => s + l.recordedCents, 0)).toBe(pnl);
       expect(report.byVendor.reduce((s, v) => s + v.cents, 0)).toBe(pnl);
       expect(report.byCategory.reduce((s, c) => s + c.cents, 0)).toBe(pnl);
     }
@@ -218,11 +220,14 @@ describe("tax summary", () => {
     expense("2026-02-01", 101_01, "Meals (50% deductible)");
     expense("2026-03-01", 200_00, "Advertising & marketing");
     const t = taxSummary([], loadExpenses(db, Y2026));
-    expect(t.lines.map((l) => [l.line, l.cents])).toEqual([
-      ["8", 200_00],
-      ["24b", 101_01],
-      ["27a", 71_99],
+    expect(t.lines.map((l) => [l.line, l.cents, l.recordedCents])).toEqual([
+      ["8", 200_00, 200_00],
+      ["24b", 50_51, 101_01],
+      ["27a", 71_99, 71_99],
     ]);
+    // Line 28 uses the deductible meals amount.
+    expect(t.totalExpensesCents).toBe(200_00 + 50_51 + 71_99);
+    expect(t.netCents).toBe(-(200_00 + 50_51 + 71_99));
     expect(t.lines.find((l) => l.line === "27a")!.categories.map((c) => c.name)).toEqual(["Software & subscriptions", "Hosting & domains"]);
     expect(t.mealsCents).toBe(101_01);
     expect(t.mealsDeductibleCents).toBe(50_51);

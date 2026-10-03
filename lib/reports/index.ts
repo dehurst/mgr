@@ -123,12 +123,12 @@ export function taxCsv(r: ReturnType<typeof taxReport>): Cell[][] {
     ["1", "Gross receipts", "", $(r.grossReceiptsCents)],
     ...r.lines.flatMap((l) => [
       [l.line, l.label, "", $(l.cents)] as Cell[],
-      ...l.categories.map((c) => ["", "", c.name, $(c.cents)] as Cell[]),
+      ...l.categories.map((c) => ["", "", l.line === "24b" ? `${c.name} (spent; 50% counted above)` : c.name, $(c.cents)] as Cell[]),
     ]),
     ["28", "Total expenses", "", $(r.totalExpensesCents)],
     ["", "Net (before any adjustments)", "", $(r.netCents)],
     [],
-    ...(r.mealsCents ? [["24b", "Meals: full amount / 50% deductible", $(r.mealsCents), $(r.mealsDeductibleCents)]] : []),
-    ["Note: totals are as recorded. Your CPA applies limits (e.g. meals), depreciation, and home office."],
+    ...(r.mealsCents ? [["24b", `Meals: ${$(r.mealsCents)} spent, 50% deductible = ${$(r.mealsDeductibleCents)} (used above)`]] : []),
+    ["Note: meals are limited to 50% on line 24b. Other amounts are as recorded; your CPA handles depreciation and home office."],
   ];
 }

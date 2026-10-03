@@ -2,12 +2,13 @@ import Link from "next/link";
 import { ReportHeader } from "@/components/report-header";
 import { Button } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/form-controls";
-import { Alert, Card, CardContent } from "@/components/ui/misc";
+import { Card, CardContent } from "@/components/ui/misc";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDb } from "@/db";
 import { today } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { taxReport } from "@/lib/reports";
+import { MEALS_LINE } from "@/lib/reports/tax";
 import { getSettings } from "@/lib/settings";
 
 export default async function TaxSummaryPage({ searchParams }: PageProps<"/reports/tax">) {
@@ -86,16 +87,10 @@ export default async function TaxSummaryPage({ searchParams }: PageProps<"/repor
           </CardContent>
         </Card>
 
-        {r.mealsCents > 0 && (
-          <Alert>
-            <strong>Meals (line 24b):</strong> you recorded {formatCents(r.mealsCents)}. Business meals are generally 50% deductible,
-            so about {formatCents(r.mealsDeductibleCents)}. The total above uses the full amount; your CPA applies the limit.
-          </Alert>
-        )}
         <p className="text-xs text-muted-foreground">
-          These are the amounts as recorded, grouped by the Schedule C line set on each expense category. Your CPA decides final
-          treatment, including depreciation (line 13), home office (line 30), and self-employment tax. Change a category&apos;s line in
-          Settings → Expense categories.
+          Amounts are grouped by the Schedule C line set on each expense category. Meals (line 24b) are limited to the 50% that&apos;s
+          deductible; everything else is as recorded. Your CPA decides final treatment, including depreciation (line 13), home office
+          (line 30), and self-employment tax. Change a category&apos;s line in Settings → Expense categories.
         </p>
       </div>
     </>
@@ -119,6 +114,7 @@ function LineRows({ line: l, year }: { line: ReturnType<typeof taxReport>["lines
               {c.name}
             </Link>
             {l.line === "27a" && <span className="ml-2 text-xs">(Part V)</span>}
+            {l.line === MEALS_LINE && <span className="ml-2 text-xs">spent; 50% is deductible</span>}
           </TableCell>
           <TableCell className="tabular text-right text-sm">{formatCents(c.cents)}</TableCell>
         </TableRow>

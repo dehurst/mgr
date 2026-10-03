@@ -48,8 +48,9 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
    the category.
 9. **One source of truth per number.** Report math lives in pure functions under `lib/reports/`
    that take plain rows and return plain objects. Pages, CSV export, and PDF all call the same
-   function. Reconciliation is tested: P&L expense total == expense report total == tax
-   summary total for the same range.
+   function. Reconciliation is tested: P&L expense total == expense report total == the tax
+   summary's recorded total. The tax summary's line 24b (and so line 28 and net) uses the
+   deductible 50% of meals (`halfCents`, rounded half up); P&L and expense reports show cash spent.
 10. **Overpayment is rejected.** A payment can't exceed the invoice's open balance. An invoice
    with active payments can't be voided until those payments are voided.
 
