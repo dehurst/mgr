@@ -101,7 +101,10 @@ uploads/             receipts + logo (gitignored)
 
 ```
 npm run dev            # dev server against data/ledger.db
-npm run start:app      # migrate + build + start (day-to-day use), http://localhost:3000
+npm run start:app      # migrate + build + start in the foreground, http://127.0.0.1:4747
+npm run service:install    # macOS: build + run in background at login (LaunchAgent com.ledger.app)
+npm run service:restart    # restart the background app (status / logs / uninstall also exist)
+npm run update         # git pull + npm install + migrate + build + restart service
 npm test               # vitest run
 npm run typecheck      # next typegen + tsc (route PageProps/RouteContext types are generated)
 npm run lint
@@ -125,6 +128,18 @@ SMTP_USER=you@gmail.com
 SMTP_PASS=<gmail app password>
 SMTP_FROM="Your Business <you@gmail.com>"
 ```
+
+## Running day to day
+
+- The background service (`scripts/service.ts`) writes `~/Library/LaunchAgents/com.ledger.app.plist`,
+  runs `next start -H 127.0.0.1 -p 4747` with `KeepAlive`, logs to `~/Library/Logs/Ledger/ledger.log`.
+- It binds to 127.0.0.1 so other devices on the same Wi-Fi can't reach the books. Port 4747 avoids
+  clashing with other dev servers on 3000. Override with `LEDGER_HOST` / `LEDGER_PORT` in `.env.local`
+  (e.g. a Tailscale IP for phone access), then `npm run service:install` again.
+- Keep the project outside `~/Documents` / `~/Desktop`: macOS privacy controls block background
+  agents there. The owner's checkout is `~/Projects/ledger`.
+- npm 11 blocks dependency install scripts unless listed in `package.json` `allowScripts`. When a
+  dependency with an install script changes version, add the new `name@version` there.
 
 ## Next.js 16 notes (read AGENTS.md)
 

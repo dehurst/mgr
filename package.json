@@ -6,13 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start:app": "npm run db:migrate && next build && next start",
+    "start:app": "npm run db:migrate && next build && next start -H 127.0.0.1 -p 4747",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "service:install": "tsx scripts/service.ts install",
+    "service:uninstall": "tsx scripts/service.ts uninstall",
+    "service:restart": "tsx scripts/service.ts restart",
+    "service:status": "tsx scripts/service.ts status",
+    "service:logs": "tsx scripts/service.ts logs",
+    "update": "sh scripts/update.sh"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -37,5 +43,13 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"
+  },
+  "allowScripts": {
+    "better-sqlite3@13.0.3": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true,
+    "unrs-resolver@1.12.2": true
   }
 }
