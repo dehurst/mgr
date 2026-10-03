@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton } from "@/components/action-button";
 import { InvoiceTable } from "@/components/invoice-table";
+import { Stat } from "@/components/stat";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge, Card, CardContent, CardHeader, CardTitle, PageHeader } from "@/components/ui/misc";
 import { getDb } from "@/db";
@@ -48,7 +49,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
         <Stat label="Total billed" value={formatCents(t.billedCents)} />
         <Stat label="Total paid" value={formatCents(t.paidCents)} />
         <Stat label="Balance due" value={formatCents(t.balanceCents)} />
-        <Stat label="Overdue" value={formatCents(t.overdueCents)} danger={t.overdueCents > 0} />
+        <Stat label="Overdue" value={formatCents(t.overdueCents)} tone={t.overdueCents > 0 ? "danger" : undefined} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -78,17 +79,6 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
         </Card>
       </div>
     </>
-  );
-}
-
-function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <Card>
-      <CardContent className="py-4">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className={`tabular mt-1 text-xl font-semibold ${danger ? "text-destructive" : ""}`}>{value}</div>
-      </CardContent>
-    </Card>
   );
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  priorRange,
   addMonths,
   daysBetween,
   endOfMonth,
@@ -100,5 +101,19 @@ describe("formatDate", () => {
     expect(formatDate("2026-01-01")).toBe("Jan 1, 2026");
     expect(formatDate("2026-12-31")).toBe("Dec 31, 2026");
     expect(formatDate(null)).toBe("");
+  });
+});
+
+describe("priorRange", () => {
+  it.each([
+    ["month", "2026-03-01", "2026-03-31", "2026-02-01", "2026-02-28"],
+    ["January -> December", "2026-01-01", "2026-01-31", "2025-12-01", "2025-12-31"],
+    ["quarter", "2026-07-01", "2026-09-30", "2026-04-01", "2026-06-30"],
+    ["year", "2026-01-01", "2026-12-31", "2025-01-01", "2025-12-31"],
+    ["YTD -> same span last year", "2026-01-01", "2026-10-03", "2025-01-01", "2025-10-03"],
+    ["two whole months ending Feb 29", "2028-01-01", "2028-02-29", "2027-11-01", "2027-12-31"],
+    ["custom days", "2026-03-10", "2026-03-19", "2026-02-28", "2026-03-09"],
+  ])("%s", (_label, from, to, pFrom, pTo) => {
+    expect(priorRange({ from, to })).toEqual({ from: pFrom, to: pTo });
   });
 });

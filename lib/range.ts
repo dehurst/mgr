@@ -22,3 +22,8 @@ export function resolveRange(sp: Params, today: DateStr, fallback: RangePreset =
   }
   return { ...presetRange(fallback, today), preset: fallback };
 }
+
+/** Query string that reproduces a resolved range (preset name, or explicit dates). */
+export function rangeQuery(r: ResolvedRange): string {
+  return r.preset === "custom" ? `from=${r.from}&to=${r.to}` : `range=${r.preset}`;
+}

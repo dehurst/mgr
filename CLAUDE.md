@@ -5,7 +5,7 @@
 Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phase 4 done** (expenses with receipts, other income). Commands marked *(Phase N)* don't
+> Status: **Phase 5 done** (dashboard, five reports, CSV + print export). Commands marked *(Phase N)* don't
 > exist yet.
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
@@ -77,7 +77,9 @@ lib/pdf/             @react-pdf invoice template; served by app/invoices/[id]/pd
 lib/expenses.ts      expense validation, filtered list + total, archived-category rules
 lib/other-income.ts  other income validation + list
 lib/range.ts         ?range=preset or ?from&to -> {from,to}; used with components/range-filter.tsx
-lib/reports/         pure report functions (pnl, expenses, aging, income-by-client, tax)
+lib/reports/         data.ts loads plain rows (the only DB access); pnl/expenses/aging/
+                     income-by-client/tax are pure; index.ts builds each report + its CSV table
+lib/dashboard.ts     dashboard numbers + recent activity
 lib/csv.ts           CSV serialization
 db/schema.ts         Drizzle schema
 db/index.ts          connection (path from DATABASE_PATH)
@@ -123,7 +125,7 @@ npm run lint
 npm run db:generate    # drizzle-kit: generate a migration after editing db/schema.ts
 npm run db:migrate     # apply migrations (also runs at startup)
 npm run demo           # (Phase 6) seed + run against data/demo.db (never touches real data)
-npm run db:seed        # (Phase 6) seed demo data into DATABASE_PATH (refuses if real data exists)
+npm run db:seed        # seed demo data into DATABASE_PATH (refuses if any data exists)
 npm run db:wipe        # (Phase 6) wipe DATABASE_PATH (requires typing the db filename)
 npm run backup         # (Phase 6) same as the Backup button: zip db + uploads into BACKUP_DIR
 ```
@@ -176,5 +178,6 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 3. ✅ Mark as sent + payments (partial, void) + derived status. Email sending and reminders were
    dropped: the owner sends the PDF manually (~5 invoices/year). Nodemailer is not a dependency.
 4. ✅ Expenses (CRUD, receipts, date-range + category filters, "save and add another") + other income.
-5. Dashboard + reports + CSV/print export.
+5. ✅ Dashboard + reports (P&L with prior-period compare, expense report with drill-down, A/R aging,
+   income by client, Schedule C summary) + CSV (`/reports/csv?report=…`) and print-to-PDF.
 6. Backup, full CSV export, demo DB/seed/wipe, README, polish.

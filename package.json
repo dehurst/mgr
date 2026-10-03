@@ -18,7 +18,8 @@
     "service:restart": "tsx scripts/service.ts restart",
     "service:status": "tsx scripts/service.ts status",
     "service:logs": "tsx scripts/service.ts logs",
-    "update": "sh scripts/update.sh"
+    "update": "sh scripts/update.sh",
+    "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",

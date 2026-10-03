@@ -70,3 +70,18 @@
     background: white;
   }
 }
+
+@media print {
+  @page {
+    margin: 0.6in;
+  }
+  /* Cards print as plain sections. */
+  .rounded-lg.border {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

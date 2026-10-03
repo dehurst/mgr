@@ -110,6 +110,28 @@ export function presetRange(preset: RangePreset, ref: DateStr): DateRange {
   }
 }
 
+/**
+ * The comparison period for a range:
+ * - whole calendar months (incl. quarters and years) -> the same number of months just before
+ * - starts Jan 1 but isn't whole months (YTD) -> the same span one year earlier
+ * - anything else -> the same number of days just before
+ */
+export function priorRange(range: DateRange): DateRange {
+  const [fy, fm, fd] = parts(range.from);
+  const wholeMonths = fd === 1 && range.to === endOfMonth(range.to);
+  if (wholeMonths) {
+    const [ty, tm] = parts(range.to);
+    const months = (ty - fy) * 12 + (tm - fm) + 1;
+    const from = addMonths(range.from, -months);
+    return { from, to: endOfMonth(addMonths(from, months - 1)) };
+  }
+  if (fm === 1 && fd === 1) {
+    return { from: addMonths(range.from, -12), to: addMonths(range.to, -12) };
+  }
+  const days = daysBetween(range.from, range.to) + 1;
+  return { from: addDays(range.from, -days), to: addDays(range.from, -1) };
+}
+
 /** Format "2026-01-05" as "Jan 5, 2026" without going through local time. */
 export function formatDate(date: DateStr | null | undefined): string {
   if (!date) return "";
