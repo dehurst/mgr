@@ -17,9 +17,10 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
   return (
-    <nav className="no-print w-52 shrink-0 border-r bg-muted/40 px-3 py-6">
-      <div className="mb-6 px-3 text-lg font-semibold tracking-tight">Ledger</div>
-      <ul className="grid gap-1">
+    // Phones: a sticky top bar with a horizontally scrolling menu. md and up: the sidebar.
+    <nav className="no-print sticky top-0 z-20 border-b bg-muted/95 px-2 py-2 backdrop-blur md:static md:w-52 md:shrink-0 md:border-r md:border-b-0 md:bg-muted/40 md:px-3 md:py-6">
+      <div className="hidden px-3 text-lg font-semibold tracking-tight md:mb-6 md:block">Ledger</div>
+      <ul className="flex gap-1 overflow-x-auto md:grid md:overflow-visible">
         {LINKS.map((l) => {
           const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
           return (
@@ -27,7 +28,7 @@ export function Nav() {
               <Link
                 href={l.href}
                 className={cn(
-                  "block rounded-md px-3 py-1.5 text-sm",
+                  "block whitespace-nowrap rounded-md px-3 py-1.5 text-sm",
                   active ? "bg-primary text-primary-foreground" : "hover:bg-accent",
                 )}
               >

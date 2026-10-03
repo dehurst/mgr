@@ -8,15 +8,17 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Ledger",
   description: "Local bookkeeping",
+  // "Add to Home Screen" on iPhone opens it full-screen with this name.
+  appleWebApp: { capable: true, title: "Ledger", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
       <body className="min-h-screen">
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen flex-col md:flex-row">
           <Nav />
-          <main className="min-w-0 flex-1 px-8 py-8 print:px-0 print:py-0">
+          <main className="min-w-0 flex-1 px-4 py-5 md:px-8 md:py-8 print:px-0 print:py-0">
             <div className="mx-auto max-w-6xl">{children}</div>
           </main>
         </div>

@@ -147,8 +147,12 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 - The background service (`scripts/service.ts`) writes `~/Library/LaunchAgents/com.ledger.app.plist`,
   runs `next start -H 127.0.0.1 -p 4747` with `KeepAlive`, logs to `~/Library/Logs/Ledger/ledger.log`.
 - It binds to 127.0.0.1 so other devices on the same Wi-Fi can't reach the books. Port 4747 avoids
-  clashing with other dev servers on 3000. Override with `LEDGER_HOST` / `LEDGER_PORT` in `.env.local`
-  (e.g. a Tailscale IP for phone access), then `npm run service:install` again.
+  clashing with other dev servers on 3000. `LEDGER_HOST` / `LEDGER_PORT` in `.env.local` override it.
+- Phone access is via **Tailscale Serve**, not by changing the bind address:
+  `tailscale serve --bg 4747` proxies `https://<mac>.<tailnet>.ts.net` (tailnet-only, real TLS cert)
+  to 127.0.0.1:4747. On macOS the CLI is `/Applications/Tailscale.app/Contents/MacOS/Tailscale`.
+  The Mac must be awake. The layout is responsive (top menu bar below `md`), form text is 16px on
+  phones so iOS doesn't zoom, and `apple-icon.png` + `appleWebApp` metadata support Add to Home Screen.
 - Keep the project outside `~/Documents` / `~/Desktop`: macOS privacy controls block background
   agents there. The owner's checkout is `~/Projects/ledger`.
 - npm 11 blocks dependency install scripts unless listed in `package.json` `allowScripts`. When a

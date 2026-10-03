@@ -118,7 +118,8 @@ export function InvoiceForm({
         <CardHeader>
           <CardTitle>Line items</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2">
+        {/* Line items keep their columns; on a phone this area scrolls sideways. */}
+        <CardContent className="grid min-w-0 gap-2 overflow-x-auto [&>*]:min-w-[34rem]">
           <div className="hidden grid-cols-[1fr_6rem_7rem_7rem_5.5rem] gap-2 px-1 text-xs font-medium text-muted-foreground sm:grid">
             <span>Description</span>
             <span className="text-right">Hours</span>

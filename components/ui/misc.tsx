@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("rounded-lg border bg-card text-card-foreground shadow-xs", className)} {...props} />;
+  return <div className={cn("min-w-0 rounded-lg border bg-card text-card-foreground shadow-xs", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -81,7 +81,7 @@ export function PageHeader({
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="no-print flex gap-2">{actions}</div>}
+      {actions && <div className="no-print flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
