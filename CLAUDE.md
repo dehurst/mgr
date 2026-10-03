@@ -5,7 +5,7 @@
 Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phase 3 done** (mark as sent, payments, derived status). Commands marked *(Phase N)* don't
+> Status: **Phase 4 done** (expenses with receipts, other income). Commands marked *(Phase N)* don't
 > exist yet.
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
@@ -74,6 +74,9 @@ lib/invoice-status.ts deriveStatus, balance, totals (pure)
 lib/invoices.ts      invoice rules + queries; functions take `db` so tests use in-memory SQLite
 lib/clients.ts       client validation, totals (billed/paid/balance exclude drafts and voids)
 lib/pdf/             @react-pdf invoice template; served by app/invoices/[id]/pdf/route.ts
+lib/expenses.ts      expense validation, filtered list + total, archived-category rules
+lib/other-income.ts  other income validation + list
+lib/range.ts         ?range=preset or ?from&to -> {from,to}; used with components/range-filter.tsx
 lib/reports/         pure report functions (pnl, expenses, aging, income-by-client, tax)
 lib/csv.ts           CSV serialization
 db/schema.ts         Drizzle schema
@@ -102,7 +105,9 @@ uploads/             receipts + logo (gitignored)
 - `expenses`: `paid_on`, vendor, category, `amount_cents`, payment method, description,
   receipt path, optional client, timestamps.
 - `expense_categories`: name, `schedule_c_line`, `archived_at`.
-- `other_income`: `received_on`, source, `amount_cents`, notes, `voided_at`.
+- `other_income`: `received_on`, source, optional `client_id` (for the Jan–Sep 2026 QBO backfill:
+  one entry per client per month), `amount_cents`, notes, `voided_at`. The UI hard-deletes; reports
+  must still exclude `voided_at` rows.
 
 ## Commands
 
@@ -170,6 +175,6 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 2. ✅ Clients + invoices + line items + invoice PDF.
 3. ✅ Mark as sent + payments (partial, void) + derived status. Email sending and reminders were
    dropped: the owner sends the PDF manually (~5 invoices/year). Nodemailer is not a dependency.
-4. Expenses (CRUD, receipts, filters) + other income.
+4. ✅ Expenses (CRUD, receipts, date-range + category filters, "save and add another") + other income.
 5. Dashboard + reports + CSV/print export.
 6. Backup, full CSV export, demo DB/seed/wipe, README, polish.

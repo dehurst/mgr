@@ -17,7 +17,8 @@ export function useFormAction(
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    // Include the clicked submit button's name/value (e.g. "save and add another").
+    const fd = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
     startTransition(() => dispatch(fd));
   };
 
