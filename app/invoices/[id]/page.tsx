@@ -9,7 +9,7 @@ import { formatDate, today } from "@/lib/dates";
 import { balanceCents, deriveStatus } from "@/lib/invoice-status";
 import { getInvoiceDetail } from "@/lib/invoices";
 import { formatCents } from "@/lib/money";
-import { deleteDraft, duplicate, unvoid, voidIt } from "../actions";
+import { deletePermanently, duplicate, unvoid, voidIt } from "../actions";
 import { PaymentsPanel, SentPanel } from "./payments-panel";
 
 export default async function InvoicePage({ params }: PageProps<"/invoices/[id]">) {
@@ -47,18 +47,35 @@ export default async function InvoicePage({ params }: PageProps<"/invoices/[id]"
               </Link>
             )}
             <ActionButton action={duplicate.bind(null, id)}>Duplicate</ActionButton>
-            {isDraft && !hasPayments ? (
-              <ActionButton variant="ghost" confirm={`Delete draft ${invoice.number}? This can't be undone.`} action={deleteDraft.bind(null, id)}>
+            {isDraft ? (
+              <ActionButton variant="ghost" confirm={`Delete draft ${invoice.number}? This can't be undone.`} action={deletePermanently.bind(null, id)}>
                 Delete draft
               </ActionButton>
-            ) : invoice.voidedAt ? (
-              <ActionButton variant="ghost" confirm={`Restore ${invoice.number}? It will count in reports again.`} action={unvoid.bind(null, id)}>
-                Un-void
-              </ActionButton>
             ) : (
-              <ActionButton variant="ghost" prompt={`Void ${invoice.number}? It stays on record but is excluded from all totals.\n\nReason (optional):`} action={voidIt.bind(null, id)}>
-                Void
-              </ActionButton>
+              <>
+                {invoice.voidedAt ? (
+                  <ActionButton variant="ghost" confirm={`Restore ${invoice.number}? It will count in reports again.`} action={unvoid.bind(null, id)}>
+                    Un-void
+                  </ActionButton>
+                ) : (
+                  <ActionButton
+                    variant="ghost"
+                    prompt={`Void ${invoice.number}? It stays on record but is excluded from all totals.\n\nReason (optional):`}
+                    action={voidIt.bind(null, id)}
+                  >
+                    Void
+                  </ActionButton>
+                )}
+                <ActionButton
+                  variant="ghost"
+                  prompt={`Permanently delete ${invoice.number}${hasPayments ? " and its recorded payments" : ""}? This can't be undone${
+                    hasPayments ? ", and that income will disappear from your reports" : ""
+                  }.\n\nTip: Void keeps a record instead.\n\nType ${invoice.number} to confirm:`}
+                  action={deletePermanently.bind(null, id)}
+                >
+                  Delete
+                </ActionButton>
+              </>
             )}
           </>
         }

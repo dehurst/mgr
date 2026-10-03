@@ -35,10 +35,10 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
    - `overdue`: balance > 0 and `due_on < today` (shown alongside partial if both apply)
    - `sent`: otherwise
    "Mark as sent" (without emailing) sets `sent_at` too, for invoices delivered outside the app.
-6. **No hard deletes of financial records once they matter.** Sent invoices are voided, never
-   deleted. Payments are voided (`voided_at`), never deleted. Only draft invoices, and expenses
-   (after a confirmation prompt), can be hard-deleted. Voided rows are excluded from every
-   report and total.
+6. **Void is the default; permanent delete is the owner's explicit choice.** Invoices can be voided
+   (kept, excluded from totals) or permanently deleted (`deleteInvoice`, removes its lines and
+   payments). Drafts delete after a confirm; sent invoices require typing the invoice number.
+   Payments are voided, never deleted on their own. Voided rows are excluded from every report.
 7. **Categories are archived, not deleted.** Expenses keep their `category_id`; renaming a
    category renames it in historical reports, which is intended. The Schedule C mapping lives on
    the category.

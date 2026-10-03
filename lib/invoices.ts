@@ -197,15 +197,16 @@ export function duplicateInvoice(db: Db, id: number, today: DateStr): SaveResult
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-/** Only never-sent invoices with no payments can be deleted outright. */
-export function deleteDraftInvoice(db: Db, id: number): ActionResult {
+/**
+ * Permanently delete an invoice, its lines, and any payments recorded on it. Owner's choice:
+ * use voidInvoice() to keep the record. Deleting a paid invoice removes that income from reports.
+ */
+export function deleteInvoice(db: Db, id: number): ActionResult {
   return db.transaction((tx): ActionResult => {
-    const inv = tx.select().from(invoices).where(eq(invoices.id, id)).get();
+    const inv = tx.select({ id: invoices.id }).from(invoices).where(eq(invoices.id, id)).get();
     if (!inv) return { ok: false, error: "Invoice not found." };
-    if (inv.sentAt) return { ok: false, error: "Sent invoices can't be deleted. Void it instead." };
-    const anyPayment = tx.select({ id: payments.id }).from(payments).where(eq(payments.invoiceId, id)).get();
-    if (anyPayment) return { ok: false, error: "This invoice has payments recorded. Void it instead." };
-    tx.delete(invoices).where(eq(invoices.id, id)).run();
+    tx.delete(payments).where(eq(payments.invoiceId, id)).run();
+    tx.delete(invoices).where(eq(invoices.id, id)).run(); // line items cascade
     return { ok: true };
   });
 }

@@ -7,7 +7,8 @@ import { today } from "@/lib/dates";
 import { str, type ActionState } from "@/lib/form";
 import {
   createInvoice,
-  deleteDraftInvoice,
+  deleteInvoice,
+  getInvoiceDetail,
   duplicateInvoice,
   parseInvoiceForm,
   unvoidInvoice,
@@ -41,8 +42,13 @@ export async function duplicate(id: number): Promise<string | void> {
   redirect(`/invoices/${r.id}/edit`);
 }
 
-export async function deleteDraft(id: number): Promise<string | void> {
-  const r = deleteDraftInvoice(getDb(), id);
+/** Drafts delete after a confirm(); anything else requires typing the invoice number. */
+export async function deletePermanently(id: number, typed?: string): Promise<string | void> {
+  const db = getDb();
+  const d = getInvoiceDetail(db, id);
+  if (!d) return "Invoice not found.";
+  if (d.invoice.sentAt && typed?.trim() !== d.invoice.number) return "The number didn't match, so nothing was deleted.";
+  const r = deleteInvoice(db, id);
   if (!r.ok) return r.error;
   revalidatePath("/", "layout");
   redirect("/invoices");

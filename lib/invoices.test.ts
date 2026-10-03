@@ -5,7 +5,7 @@ import { businessSettings, clients, invoices, payments } from "@/db/schema";
 import { deleteClient, listClientsWithTotals } from "./clients";
 import {
   createInvoice,
-  deleteDraftInvoice,
+  deleteInvoice,
   duplicateInvoice,
   getInvoiceDetail,
   listInvoiceSummaries,
@@ -109,7 +109,7 @@ describe("numbering", () => {
 
   it("deleted drafts leave gaps (numbers are not reused)", () => {
     const id = create();
-    expect(deleteDraftInvoice(db, id).ok).toBe(true);
+    expect(deleteInvoice(db, id).ok).toBe(true);
     expect(suggestInvoiceNumber(db)).toBe("INV-1002");
   });
 });
@@ -161,10 +161,14 @@ describe("duplicate", () => {
 });
 
 describe("delete and void rules", () => {
-  it("can't delete a sent invoice", () => {
+  it("permanently deletes a sent invoice with its lines and payments", () => {
     const id = create();
     db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, id)).run();
-    expect(deleteDraftInvoice(db, id).ok).toBe(false);
+    db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 500, method: "check" }).run();
+    expect(deleteInvoice(db, id).ok).toBe(true);
+    expect(getInvoiceDetail(db, id)).toBeNull();
+    expect(db.select().from(payments).all()).toHaveLength(0);
+    expect(listInvoiceSummaries(db, "2026-01-10")).toHaveLength(0);
   });
 
   it("can't void an invoice with active payments, can after voiding them", () => {
