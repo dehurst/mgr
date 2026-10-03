@@ -1,7 +1,8 @@
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "@/db";
-import { clients, expenses, invoices, otherIncome, payments } from "@/db/schema";
+import { clients, expenseCategories, expenses, invoices, otherIncome, payments } from "@/db/schema";
 import { presetRange, type DateStr } from "./dates";
+import { PERSONAL_LINE } from "./schedule-c";
 import { listInvoiceSummaries } from "./invoices";
 import { computeAging } from "./reports/aging";
 import { loadExpenses, loadIncome } from "./reports/data";
@@ -54,5 +55,7 @@ export function dashboardData(db: Db, today: DateStr) {
     .sort((a, b) => (a.dueOn < b.dueOn ? -1 : 1))
     .slice(0, 5);
   const drafts = summaries.filter((s) => s.status === "draft").length;
-  return { ytd, month, ytdPnl, monthPnl, aging, overdue, drafts, activity: recentActivity(db) };
+  const personalCategoryId =
+    db.select({ id: expenseCategories.id }).from(expenseCategories).where(eq(expenseCategories.scheduleCLine, PERSONAL_LINE)).get()?.id ?? null;
+  return { ytd, month, ytdPnl, monthPnl, aging, overdue, drafts, activity: recentActivity(db), personalCategoryId };
 }

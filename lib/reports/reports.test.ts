@@ -7,7 +7,7 @@ import { createInvoice, listInvoiceSummaries } from "@/lib/invoices";
 import { markSent, recordPayment } from "@/lib/payments";
 import { agingBucket, computeAging } from "./aging";
 import { loadExpenses, loadIncome } from "./data";
-import { expenseReport } from "./expenses";
+import { axisTicks, expenseReport, expensesByMonth } from "./expenses";
 import { incomeByClient, NO_CLIENT } from "./income-by-client";
 import { computePnl } from "./pnl";
 import { halfCents, taxSummary } from "./tax";
@@ -247,5 +247,31 @@ describe("CSV", () => {
     expect(toCsv([["a,b", 'say "hi"', "line\nbreak", "=SUM(A1)", "-12.50", null]])).toBe(
       '"a,b","say ""hi""","line\nbreak",\'=SUM(A1),-12.50,\r\n',
     );
+  });
+});
+
+describe("expenses by month", () => {
+  it("splits business and personal per month, only for the requested year", () => {
+    expense("2025-12-31", 1, "Supplies");
+    expense("2026-01-01", 10_00, "Supplies");
+    expense("2026-01-31", 5_00, "Personal (not business)");
+    expense("2026-12-31", 7_00, "Travel");
+    expense("2027-01-01", 99, "Supplies");
+    const m = expensesByMonth(loadExpenses(db, { from: "2025-01-01", to: "2027-12-31" }), 2026);
+    expect(m).toHaveLength(12);
+    expect(m[0]).toEqual({ month: 1, businessCents: 10_00, personalCents: 5_00 });
+    expect(m[11]).toEqual({ month: 12, businessCents: 7_00, personalCents: 0 });
+    expect(m.slice(1, 11).every((x) => x.businessCents === 0 && x.personalCents === 0)).toBe(true);
+    // Sum of months equals the year's P&L expenses.
+    const year = loadExpenses(db, Y2026);
+    expect(m.reduce((s, x) => s + x.businessCents, 0)).toBe(computePnl([], year).expensesCents);
+  });
+
+  it("makes clean axis ticks that cover the max", () => {
+    expect(axisTicks(1999_00)).toEqual([0, 500_00, 1000_00, 1500_00, 2000_00]);
+    expect(axisTicks(412_30)).toEqual([0, 200_00, 400_00, 600_00]);
+    expect(axisTicks(37_42)).toEqual([0, 10_00, 20_00, 30_00, 40_00]);
+    expect(axisTicks(0)).toEqual([0, 100_00]);
+    expect(axisTicks(10000_00)).toEqual([0, 2500_00, 5000_00, 7500_00, 10000_00]);
   });
 });

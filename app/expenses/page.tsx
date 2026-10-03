@@ -2,7 +2,7 @@ import Link from "next/link";
 import { RangeFilter } from "@/components/range-filter";
 import { buttonVariants } from "@/components/ui/button";
 import { Label, Select } from "@/components/ui/form-controls";
-import { Card, CardContent, PageHeader } from "@/components/ui/misc";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader } from "@/components/ui/misc";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDb } from "@/db";
 import { formatDate, today } from "@/lib/dates";
@@ -12,6 +12,9 @@ import { resolveRange } from "@/lib/range";
 import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { expenseCategories } from "@/db/schema";
 import { asc } from "drizzle-orm";
+import { MonthChart } from "@/components/month-chart";
+import { loadExpenses } from "@/lib/reports/data";
+import { axisTicks, expensesByMonth } from "@/lib/reports/expenses";
 
 export default async function ExpensesPage({ searchParams }: PageProps<"/expenses">) {
   const sp = await searchParams;
@@ -22,6 +25,11 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
   const categories = db.select({ id: expenseCategories.id, name: expenseCategories.name }).from(expenseCategories).orderBy(asc(expenseCategories.name)).all();
   const { rows, totalCents, personalCents } = listExpenses(db, { range, categoryId });
   const hasActiveCategories = categoryOptions(db).length > 0;
+  // The chart always shows the whole calendar year of the selected period's end date.
+  const chartYear = Number(range.to.slice(0, 4));
+  const months = expensesByMonth(loadExpenses(db, { from: `${chartYear}-01-01`, to: `${chartYear}-12-31` }), chartYear);
+  const yearBusiness = months.reduce((s, m) => s + m.businessCents, 0);
+  const yearPersonal = months.reduce((s, m) => s + m.personalCents, 0);
 
   return (
     <>
@@ -36,6 +44,21 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
           )
         }
       />
+      <Card className="mb-6">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+          <div className="grid gap-1">
+            <CardTitle>Business expenses by month, {chartYear}</CardTitle>
+            {yearPersonal > 0 && <CardDescription>Personal spending ({formatCents(yearPersonal)}) is not included.</CardDescription>}
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-muted-foreground">Total for {chartYear}</div>
+            <div className="text-xl font-semibold">{formatCents(yearBusiness)}</div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <MonthChart year={chartYear} months={months} ticks={axisTicks(Math.max(...months.map((m) => m.businessCents)))} />
+        </CardContent>
+      </Card>
       <Card>
         <CardContent className="grid gap-4">
           <RangeFilter range={range}>

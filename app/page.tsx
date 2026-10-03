@@ -50,9 +50,9 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Revenue this year" value={formatCents(d.ytdPnl.incomeCents)} sub={`${formatCents(d.monthPnl.incomeCents)} this month`} />
-        <Stat label="Expenses this year" value={formatCents(d.ytdPnl.expensesCents)} sub={`${formatCents(d.monthPnl.expensesCents)} this month`} />
+        <Stat label="Business expenses this year" value={formatCents(d.ytdPnl.expensesCents)} sub={`${formatCents(d.monthPnl.expensesCents)} this month`} />
         <Stat
           label="Net profit this year"
           value={formatCents(d.ytdPnl.netCents)}
@@ -72,6 +72,23 @@ export default function DashboardPage() {
           }
         />
       </div>
+
+      {/* Personal view: not part of the business books, shown only when there is personal spending. */}
+      {d.ytdPnl.personalCents > 0 && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat
+            label="Personal spending this year"
+            value={formatCents(d.ytdPnl.personalCents)}
+            sub={<Link href={`/expenses?range=ytd&category=${d.personalCategoryId}`} className="underline">Not counted in profit</Link>}
+          />
+          <Stat
+            label="Left after personal spending"
+            value={formatCents(d.ytdPnl.netCents - d.ytdPnl.personalCents)}
+            tone={d.ytdPnl.netCents - d.ytdPnl.personalCents < 0 ? "danger" : undefined}
+            sub="Net profit minus personal, before income taxes"
+          />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
