@@ -64,6 +64,12 @@ export default async function PnlPage({ searchParams }: PageProps<"/reports/pnl"
               <Row cmp={!!p} strong label="Total expenses" cur={r.current.expensesCents} pri={p?.expensesCents} />
               <Section cmp={!!p} label="" />
               <Row cmp={!!p} strong label="Net profit" cur={r.current.netCents} pri={p?.netCents} />
+              {(r.current.personalCents > 0 || (p?.personalCents ?? 0) > 0) && (
+                <>
+                  <Section cmp={!!p} label="Not included above" />
+                  <Row cmp={!!p} indent label="Personal spending" cur={r.current.personalCents} pri={p?.personalCents} />
+                </>
+              )}
             </TableBody>
           </Table>
         </CardContent>

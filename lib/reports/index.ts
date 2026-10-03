@@ -45,6 +45,9 @@ export function pnlCsv(r: ReturnType<typeof pnlReport>): Cell[][] {
     row("Total expenses", r.current.expensesCents, r.prior?.expensesCents),
     [],
     row("Net profit", r.current.netCents, r.prior?.netCents),
+    ...(r.current.personalCents || r.prior?.personalCents
+      ? [[], row("Personal spending (not included above)", r.current.personalCents, r.prior?.personalCents)]
+      : []),
   ];
 }
 
@@ -58,8 +61,16 @@ export function expensesCsv(r: ReturnType<typeof expensesReportData>): Cell[][] 
     [`Expense report, ${formatDate(r.range.from)} – ${formatDate(r.range.to)}`],
     [],
     ["Date", "Vendor", "Category", "Schedule C line", "Description", "Amount"],
-    ...r.rows.map((e) => [e.date, e.vendor, e.categoryName, e.scheduleCLine, e.description, $(e.amountCents)]),
-    ["", "", "", "", "Total", $(r.totalCents)],
+    ...r.business.map((e) => [e.date, e.vendor, e.categoryName, e.scheduleCLine, e.description, $(e.amountCents)]),
+    ["", "", "", "", "Total business expenses", $(r.totalCents)],
+    ...(r.personal.length
+      ? [
+          [],
+          ["Personal (not business, excluded from totals)"],
+          ...r.personal.map((e) => [e.date, e.vendor, e.categoryName, "", e.description, $(e.amountCents)]),
+          ["", "", "", "", "Total personal", $(r.personalCents)],
+        ]
+      : []),
     [],
     ["By category", "", "Count", "Amount"],
     ...r.byCategory.map((c) => [c.name, "", c.count, $(c.cents)]),

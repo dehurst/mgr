@@ -1,6 +1,6 @@
 import { SCHEDULE_C_LINES } from "@/lib/schedule-c";
 import { sumCents } from "@/lib/money";
-import type { ExpenseRow, IncomeRow } from "./data";
+import { isPersonal, type ExpenseRow, type IncomeRow } from "./data";
 import { expensesByCategory, type CategoryTotal } from "./expenses";
 
 export type TaxLine = {
@@ -20,7 +20,7 @@ export function halfCents(cents: number): number {
  * Gross receipts = all money received. The CPA makes final calls (meals limit, depreciation, etc.).
  */
 export function taxSummary(income: IncomeRow[], expenses: ExpenseRow[]) {
-  const byCat = expensesByCategory(expenses);
+  const byCat = expensesByCategory(expenses.filter((r) => !isPersonal(r)));
   const order = SCHEDULE_C_LINES.map((l) => l.line as string);
   const lines: TaxLine[] = [];
   for (const def of SCHEDULE_C_LINES) {

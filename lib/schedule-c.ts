@@ -28,7 +28,20 @@ export function isScheduleCLine(s: string): s is ScheduleCLine {
   return SCHEDULE_C_LINES.some((l) => l.line === s);
 }
 
+/**
+ * Special "line" for personal spending recorded for completeness (e.g. paid with the business
+ * card by mistake). It is not a business expense: P&L, tax summary, and dashboard exclude it.
+ */
+export const PERSONAL_LINE = "personal";
+export const PERSONAL_CATEGORY_NAME = "Personal (not business)";
+
+/** Valid value for a category's line: a Schedule C line or the personal marker. */
+export function isCategoryLine(s: string): boolean {
+  return s === PERSONAL_LINE || isScheduleCLine(s);
+}
+
 export function scheduleCLabel(line: string): string {
+  if (line === PERSONAL_LINE) return "Not deductible (personal)";
   const found = SCHEDULE_C_LINES.find((l) => l.line === line);
   return found ? `Line ${found.line}: ${found.label}` : `Line ${line}`;
 }

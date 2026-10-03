@@ -1,5 +1,6 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { DEFAULT_CATEGORIES } from "@/lib/schedule-c";
+import { ne } from "drizzle-orm";
+import { DEFAULT_CATEGORIES, PERSONAL_LINE } from "@/lib/schedule-c";
 import * as schema from "./schema";
 
 export const DEFAULT_INVOICE_EMAIL_SUBJECT = "Invoice {{invoice_number}} from {{business_name}}";
@@ -39,7 +40,13 @@ export function ensureDefaults(db: BetterSQLite3Database<typeof schema>): void {
       .onConflictDoNothing()
       .run();
 
-    const anyCategory = tx.select({ id: schema.expenseCategories.id }).from(schema.expenseCategories).limit(1).get();
+    // The personal category is added by a migration, so ignore it when deciding whether to seed.
+    const anyCategory = tx
+      .select({ id: schema.expenseCategories.id })
+      .from(schema.expenseCategories)
+      .where(ne(schema.expenseCategories.scheduleCLine, PERSONAL_LINE))
+      .limit(1)
+      .get();
     if (!anyCategory) {
       tx.insert(schema.expenseCategories)
         .values(DEFAULT_CATEGORIES.map((c) => ({ name: c.name, scheduleCLine: c.scheduleCLine })))

@@ -39,14 +39,18 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
    (kept, excluded from totals) or permanently deleted (`deleteInvoice`, removes its lines and
    payments). Drafts delete after a confirm; sent invoices require typing the invoice number.
    Payments are voided, never deleted on their own. Voided rows are excluded from every report.
-7. **Categories are archived, not deleted.** Expenses keep their `category_id`; renaming a
+7. **Personal spending is not a business expense.** Categories whose `schedule_c_line` is
+   `personal` (`PERSONAL_LINE`; the "Personal (not business)" category is added by migration 0002)
+   are recorded but excluded from P&L, the expense report total, the tax summary, and the
+   dashboard; screens and CSVs show them as a separate line. Use `isPersonal()` in report code.
+8. **Categories are archived, not deleted.** Expenses keep their `category_id`; renaming a
    category renames it in historical reports, which is intended. The Schedule C mapping lives on
    the category.
-8. **One source of truth per number.** Report math lives in pure functions under `lib/reports/`
+9. **One source of truth per number.** Report math lives in pure functions under `lib/reports/`
    that take plain rows and return plain objects. Pages, CSV export, and PDF all call the same
    function. Reconciliation is tested: P&L expense total == expense report total == tax
    summary total for the same range.
-9. **Overpayment is rejected.** A payment can't exceed the invoice's open balance. An invoice
+10. **Overpayment is rejected.** A payment can't exceed the invoice's open balance. An invoice
    with active payments can't be voided until those payments are voided.
 
 ## Stack
@@ -106,7 +110,7 @@ uploads/             receipts + logo (gitignored)
   Manual `sent_at` is stored as noon UTC of the chosen date (`sentAtFor`).
 - `expenses`: `paid_on`, vendor, category, `amount_cents`, payment method, description,
   receipt path, optional client, timestamps.
-- `expense_categories`: name, `schedule_c_line`, `archived_at`.
+- `expense_categories`: name, `schedule_c_line` (a Schedule C line, or `personal`), `archived_at`.
 - `other_income`: `received_on`, source, optional `client_id` (for the Jan–Sep 2026 QBO backfill:
   one entry per client per month), `amount_cents`, notes, `voided_at`. The UI hard-deletes; reports
   must still exclude `voided_at` rows.

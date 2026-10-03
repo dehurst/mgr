@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { openDb, type Db } from "@/db";
 import { clients, expenseCategories, expenses, otherIncome } from "@/db/schema";
@@ -15,7 +15,13 @@ function add(paidOn: string, amountCents: number, categoryId = catA, vendor = "G
 
 beforeEach(() => {
   db = openDb(":memory:");
-  [catA, catB] = db.select().from(expenseCategories).limit(2).all().map((c) => c.id);
+  [catA, catB] = db
+    .select()
+    .from(expenseCategories)
+    .where(ne(expenseCategories.scheduleCLine, "personal"))
+    .limit(2)
+    .all()
+    .map((c) => c.id);
 });
 
 describe("parseExpenseForm", () => {
@@ -57,6 +63,16 @@ describe("listExpenses", () => {
     const y = listExpenses(db, { range: { from: "2026-01-01", to: "2026-12-31" } });
     expect(y.rows.map((r) => r.amountCents).sort()).toEqual([200, 400]);
     expect(y.totalCents).toBe(600);
+  });
+
+  it("totals business expenses and shows personal spending separately", () => {
+    const personal = db.select().from(expenseCategories).where(eq(expenseCategories.scheduleCLine, "personal")).get()!.id;
+    add("2026-02-01", 1000, catA);
+    add("2026-02-02", 250, personal, "Target");
+    const r = listExpenses(db, { range: { from: "2026-01-01", to: "2026-12-31" } });
+    expect(r.rows).toHaveLength(2);
+    expect(r.totalCents).toBe(1000);
+    expect(r.personalCents).toBe(250);
   });
 
   it("filters by category and totals the filtered rows only", () => {

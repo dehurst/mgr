@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
 import { businessSettings, expenseCategories, invoices } from "@/db/schema";
 import { file, int, looksLikeEmail, str, type ActionState, type FieldErrors } from "@/lib/form";
-import { isScheduleCLine } from "@/lib/schedule-c";
+import { isCategoryLine } from "@/lib/schedule-c";
 import { getSettings } from "@/lib/settings";
 import { deleteUpload, IMAGE_TYPES, saveUpload } from "@/lib/uploads";
 
@@ -73,7 +73,7 @@ function categoryFields(fd: FormData): { name: string; scheduleCLine: string; er
   const scheduleCLine = str(fd, "scheduleCLine");
   if (!name) errors.name = "Name is required.";
   else if (name.length > 60) errors.name = "Keep it under 60 characters.";
-  if (!isScheduleCLine(scheduleCLine)) errors.scheduleCLine = "Pick a Schedule C line.";
+  if (!isCategoryLine(scheduleCLine)) errors.scheduleCLine = "Pick a Schedule C line.";
   return { name, scheduleCLine, errors };
 }
 

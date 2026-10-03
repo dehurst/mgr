@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CATEGORIES } from "@/lib/schedule-c";
+import { DEFAULT_CATEGORIES, PERSONAL_CATEGORY_NAME, PERSONAL_LINE } from "@/lib/schedule-c";
 import { ensureDefaults } from "./defaults";
 import { openDb } from "./index";
 import * as s from "./schema";
@@ -12,12 +12,14 @@ describe("database bootstrap", () => {
     expect(settings).toHaveLength(1);
     expect(settings[0].nextInvoiceNumber).toBe(1001);
     expect(settings[0].invoiceEmailBody).toContain("{{invoice_number}}");
-    expect(db.select().from(s.expenseCategories).all()).toHaveLength(DEFAULT_CATEGORIES.length);
+    const cats = db.select().from(s.expenseCategories).all();
+    expect(cats).toHaveLength(DEFAULT_CATEGORIES.length + 1);
+    expect(cats.filter((c) => c.scheduleCLine === PERSONAL_LINE).map((c) => c.name)).toEqual([PERSONAL_CATEGORY_NAME]);
   });
 
   it("ensureDefaults is idempotent and never re-adds renamed or archived categories", () => {
     const db = openDb(":memory:");
-    const first = db.select().from(s.expenseCategories).get()!;
+    const first = db.select().from(s.expenseCategories).where(eq(s.expenseCategories.name, DEFAULT_CATEGORIES[0].name)).get()!;
     db.update(s.expenseCategories)
       .set({ name: "Renamed", archivedAt: new Date().toISOString() })
       .where(eq(s.expenseCategories.id, first.id))
@@ -25,7 +27,7 @@ describe("database bootstrap", () => {
     ensureDefaults(db);
     ensureDefaults(db);
     const cats = db.select().from(s.expenseCategories).all();
-    expect(cats).toHaveLength(DEFAULT_CATEGORIES.length);
+    expect(cats).toHaveLength(DEFAULT_CATEGORIES.length + 1);
     expect(cats.find((c) => c.name === first.name)).toBeUndefined();
     expect(db.select().from(s.businessSettings).all()).toHaveLength(1);
   });

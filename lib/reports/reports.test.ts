@@ -126,6 +126,24 @@ describe("reconciliation", () => {
   });
 });
 
+describe("personal spending", () => {
+  it("is left out of P&L, expense report totals, and the tax summary, but reported separately", () => {
+    expense("2026-02-01", 100_00, "Supplies", "Staples");
+    expense("2026-02-02", 45_67, "Personal (not business)", "Target");
+    const rows = loadExpenses(db, Y2026);
+    const pnl = computePnl([], rows);
+    expect(pnl.expensesCents).toBe(100_00);
+    expect(pnl.personalCents).toBe(45_67);
+    expect(pnl.expensesByCategory.map((c) => c.name)).toEqual(["Supplies"]);
+    const report = expenseReport(rows);
+    expect(report).toMatchObject({ totalCents: 100_00, personalCents: 45_67, count: 1 });
+    expect(report.byVendor.map((v) => v.vendor)).toEqual(["Staples"]);
+    const tax = taxSummary([], rows);
+    expect(tax.totalExpensesCents).toBe(100_00);
+    expect(tax.lines.flatMap((l) => l.categories.map((c) => c.name))).toEqual(["Supplies"]);
+  });
+});
+
 describe("expense report", () => {
   it("groups vendors case-insensitively under the most common spelling", () => {
     expense("2026-01-01", 100, "Supplies", "Staples");

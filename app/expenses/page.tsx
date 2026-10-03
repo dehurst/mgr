@@ -9,6 +9,7 @@ import { formatDate, today } from "@/lib/dates";
 import { categoryOptions, EXPENSE_METHOD_LABELS, listExpenses } from "@/lib/expenses";
 import { formatCents } from "@/lib/money";
 import { resolveRange } from "@/lib/range";
+import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { expenseCategories } from "@/db/schema";
 import { asc } from "drizzle-orm";
 
@@ -19,7 +20,7 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
   const db = getDb();
   // Filter dropdown includes archived categories, since old expenses may use them.
   const categories = db.select({ id: expenseCategories.id, name: expenseCategories.name }).from(expenseCategories).orderBy(asc(expenseCategories.name)).all();
-  const { rows, totalCents } = listExpenses(db, { range, categoryId });
+  const { rows, totalCents, personalCents } = listExpenses(db, { range, categoryId });
   const hasActiveCategories = categoryOptions(db).length > 0;
 
   return (
@@ -81,7 +82,7 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
                       </Link>
                       {r.description && <div className="max-w-80 truncate text-xs text-muted-foreground">{r.description}</div>}
                     </TableCell>
-                    <TableCell>{r.categoryName}</TableCell>
+                    <TableCell className={r.scheduleCLine === PERSONAL_LINE ? "text-muted-foreground italic" : undefined}>{r.categoryName}</TableCell>
                     <TableCell className="text-muted-foreground">{EXPENSE_METHOD_LABELS[r.paymentMethod]}</TableCell>
                     <TableCell>
                       {r.receiptPath ? (
@@ -98,11 +99,15 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={5}>
-                    Total ({rows.length} expense{rows.length === 1 ? "" : "s"})
-                  </TableCell>
+                  <TableCell colSpan={5}>{personalCents ? "Business expenses" : `Total (${rows.length} expense${rows.length === 1 ? "" : "s"})`}</TableCell>
                   <TableCell className="tabular text-right">{formatCents(totalCents)}</TableCell>
                 </TableRow>
+                {personalCents > 0 && (
+                  <TableRow className="text-muted-foreground">
+                    <TableCell colSpan={5}>Personal (not business, left out of reports)</TableCell>
+                    <TableCell className="tabular text-right">{formatCents(personalCents)}</TableCell>
+                  </TableRow>
+                )}
               </TableFooter>
             </Table>
           )}

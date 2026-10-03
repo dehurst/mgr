@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form-controls";
 import { useFormAction } from "@/components/use-form-action";
-import { SCHEDULE_C_LINES } from "@/lib/schedule-c";
+import { PERSONAL_LINE, SCHEDULE_C_LINES } from "@/lib/schedule-c";
 import { createCategory, setCategoryArchived, updateCategory } from "../actions";
 
 function LineOptions() {
@@ -15,6 +15,7 @@ function LineOptions() {
           Line {l.line}: {l.label}
         </option>
       ))}
+      <option value={PERSONAL_LINE}>Not deductible (personal, excluded from reports)</option>
     </>
   );
 }

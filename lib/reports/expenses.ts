@@ -1,5 +1,5 @@
 import { sumCents } from "@/lib/money";
-import type { ExpenseRow } from "./data";
+import { isPersonal, type ExpenseRow } from "./data";
 
 export type CategoryTotal = { categoryId: number; name: string; scheduleCLine: string; cents: number; count: number };
 export type VendorTotal = { vendor: string; cents: number; count: number };
@@ -32,11 +32,17 @@ export function expensesByVendor(rows: ExpenseRow[]): VendorTotal[] {
     .sort((a, b) => b.cents - a.cents || a.vendor.localeCompare(b.vendor));
 }
 
+/** Business expenses only; personal spending is reported separately. */
 export function expenseReport(rows: ExpenseRow[]) {
+  const business = rows.filter((r) => !isPersonal(r));
+  const personal = rows.filter(isPersonal);
   return {
-    byCategory: expensesByCategory(rows),
-    byVendor: expensesByVendor(rows),
-    totalCents: sumCents(rows.map((r) => r.amountCents)),
-    count: rows.length,
+    business,
+    personal,
+    byCategory: expensesByCategory(business),
+    byVendor: expensesByVendor(business),
+    totalCents: sumCents(business.map((r) => r.amountCents)),
+    count: business.length,
+    personalCents: sumCents(personal.map((r) => r.amountCents)),
   };
 }

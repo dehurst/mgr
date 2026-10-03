@@ -15,6 +15,13 @@
       "when": 1791027233957,
       "tag": "0001_client_default_rate",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791030967451,
+      "tag": "0002_personal_category",
+      "breakpoints": true
     }
   ]
 }

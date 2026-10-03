@@ -20,11 +20,12 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
 
   // Drill-down: transactions for one category or vendor (case-insensitive, like the grouping).
   const drill = categoryId
-    ? { label: r.byCategory.find((c) => c.categoryId === categoryId)?.name ?? "Category", rows: r.rows.filter((e) => e.categoryId === categoryId) }
+    ? { label: r.rows.find((e) => e.categoryId === categoryId)?.categoryName ?? "Category", rows: r.rows.filter((e) => e.categoryId === categoryId) }
     : vendor
-      ? { label: vendor, rows: r.rows.filter((e) => e.vendor.trim().toLowerCase() === vendor.trim().toLowerCase()) }
+      ? { label: vendor, rows: r.business.filter((e) => e.vendor.trim().toLowerCase() === vendor.trim().toLowerCase()) }
       : null;
-  const txRows = drill ? drill.rows : r.rows;
+  const txRows = drill ? drill.rows : r.business;
+  const personalCategoryId = r.personal[0]?.categoryId;
   const txTotal = txRows.reduce((s, e) => s + e.amountCents, 0);
 
   return (
@@ -42,6 +43,14 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
           </CardContent>
         </Card>
 
+        {r.personalCents > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Not included: {formatCents(r.personalCents)} of personal spending ({r.personal.length} item{r.personal.length === 1 ? "" : "s"}).{" "}
+            <Link href={`${base}&category=${personalCategoryId}`} className="no-print underline">
+              View
+            </Link>
+          </p>
+        )}
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>

@@ -4,6 +4,7 @@ import { clients, EXPENSE_PAYMENT_METHODS, expenseCategories, expenses, type Exp
 import { isValidDate, type DateRange, type DateStr } from "./dates";
 import type { FieldErrors } from "./form";
 import { parseCents, sumCents } from "./money";
+import { PERSONAL_LINE } from "./schedule-c";
 
 export { EXPENSE_METHOD_LABELS } from "./payment-methods";
 
@@ -83,7 +84,13 @@ export function listExpenses(db: Db, f: ExpenseFilter) {
     )
     .orderBy(desc(expenses.paidOn), desc(expenses.id))
     .all();
-  return { rows, totalCents: sumCents(rows.map((r) => r.amountCents)) };
+  const personal = rows.filter((r) => r.scheduleCLine === PERSONAL_LINE);
+  return {
+    rows,
+    /** Business expenses only; personal spending is shown separately. */
+    totalCents: sumCents(rows.filter((r) => r.scheduleCLine !== PERSONAL_LINE).map((r) => r.amountCents)),
+    personalCents: sumCents(personal.map((r) => r.amountCents)),
+  };
 }
 
 export function getExpense(db: Db, id: number) {

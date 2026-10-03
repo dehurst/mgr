@@ -4,6 +4,7 @@ import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import type { Db } from "@/db";
 import { clients, expenseCategories, expenses, invoices, otherIncome, payments } from "@/db/schema";
 import type { DateRange, DateStr } from "@/lib/dates";
+import { PERSONAL_LINE } from "@/lib/schedule-c";
 
 /** Money received (cash basis): a payment on an invoice, or other income. */
 export type IncomeRow = {
@@ -27,6 +28,11 @@ export type ExpenseRow = {
   scheduleCLine: string;
   description: string;
 };
+
+/** Personal spending is recorded but is never a business expense. */
+export function isPersonal(row: { scheduleCLine: string }): boolean {
+  return row.scheduleCLine === PERSONAL_LINE;
+}
 
 /** Non-voided payments on non-voided invoices, plus non-voided other income, within the range. */
 export function loadIncome(db: Db, range: DateRange): IncomeRow[] {
