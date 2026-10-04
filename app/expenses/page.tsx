@@ -47,16 +47,26 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
       <Card className="mb-6">
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
           <div className="grid gap-1">
-            <CardTitle>Business expenses by month, {chartYear}</CardTitle>
-            {yearPersonal > 0 && <CardDescription>Personal spending ({formatCents(yearPersonal)}) is not included.</CardDescription>}
+            <CardTitle>Expenses by month, {chartYear}</CardTitle>
+            {yearPersonal > 0 && <CardDescription>Only business expenses count toward profit and taxes.</CardDescription>}
           </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Total for {chartYear}</div>
-            <div className="text-xl font-semibold">{formatCents(yearBusiness)}</div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 sm:text-right">
+            {yearPersonal > 0 && (
+              <>
+                <YearTotal label="Personal" cents={yearPersonal} />
+                <YearTotal label="Total spent" cents={yearBusiness + yearPersonal} />
+              </>
+            )}
+            <YearTotal label={`Business, ${chartYear}`} cents={yearBusiness} strong />
           </div>
         </CardHeader>
         <CardContent>
-          <MonthChart year={chartYear} months={months} ticks={axisTicks(Math.max(...months.map((m) => m.businessCents)))} />
+          <MonthChart
+            year={chartYear}
+            months={months}
+            ticks={axisTicks(Math.max(...months.map((m) => m.businessCents + m.personalCents)))}
+            businessTicks={axisTicks(Math.max(...months.map((m) => m.businessCents)))}
+          />
         </CardContent>
       </Card>
       <Card>
@@ -142,5 +152,14 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
         </CardContent>
       </Card>
     </>
+  );
+}
+
+function YearTotal({ label, cents, strong }: { label: string; cents: number; strong?: boolean }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`tabular text-base sm:text-xl ${strong ? "font-semibold" : "text-muted-foreground"}`}>{formatCents(cents)}</div>
+    </div>
   );
 }
