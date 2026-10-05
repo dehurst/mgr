@@ -5,7 +5,7 @@
 Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phase 5 done** (dashboard, five reports, CSV + print export). Commands marked *(Phase N)* don't
+> Status: **Phase 6 mostly done** (everything except backup). Commands marked *(Phase N)* don't
 > exist yet.
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
@@ -101,6 +101,7 @@ lib/reports/         data.ts loads plain rows (the only DB access); pnl/expenses
                      income-by-client/tax/form-1099 are pure; index.ts builds each report + its CSV table
 lib/dashboard.ts     dashboard numbers + recent activity
 lib/csv.ts           CSV serialization
+lib/export.ts        "Export all data": every table as CSV in a zip (fflate), served by app/export
 db/schema.ts         Drizzle schema
 db/index.ts          connection (path from DATABASE_PATH)
 db/seed.ts           demo data
@@ -152,9 +153,9 @@ npm run typecheck      # next typegen + tsc (route PageProps/RouteContext types 
 npm run lint
 npm run db:generate    # drizzle-kit: generate a migration after editing db/schema.ts
 npm run db:migrate     # apply migrations (also runs at startup)
-npm run demo           # (Phase 6) seed + run against data/demo.db (never touches real data)
+npm run demo           # fresh data/demo.db + data/demo-uploads, served on :4748 with a banner
 npm run db:seed        # seed demo data into DATABASE_PATH (refuses if any data exists)
-npm run db:wipe        # (Phase 6) wipe DATABASE_PATH (requires typing the db filename)
+npm run db:wipe        # erase DATABASE_PATH's records (type the filename; saves a .before-wipe copy)
 npm run backup         # (Phase 6) same as the Backup button: zip db + uploads into BACKUP_DIR
 ```
 
@@ -213,4 +214,5 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 5. ✅ Dashboard + reports (P&L with prior-period compare, expense report with drill-down, A/R aging,
    income by client, Schedule C summary) + CSV (`/reports/csv?report=…`) and print-to-PDF.
    Later: payees + 1099-NEC summary (`/reports/1099`, CSV `report=1099`) and recipient-copy PDFs.
-6. Backup, full CSV export, demo DB/seed/wipe, README, polish.
+6. Full CSV export (Settings → Export all data), demo + wipe, README, error/404 pages: done.
+   Still to do: Backup button + `npm run backup` (owner deferred; Google Drive folder later).

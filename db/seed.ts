@@ -72,6 +72,18 @@ export function seedDemo(db: Db, today: DateStr): void {
   ex(30, "GitHub", "Software & subscriptions", 48_00);
   ex(5, "Staples", "Office expense", 37_42);
 
+  // A contractor: two checks this year count toward a 1099; the card payment doesn't.
+  const designer = db
+    .insert(payees)
+    .values({ name: "Sam Rivera", address: "12 Elm St\nDurham, NC 27701", taxClassification: "individual", tinType: "ssn", tinLast4: "4321", w9ReceivedOn: d(-100) })
+    .returning()
+    .get();
+  const pay = (ago: number, cents: number, paymentMethod: "check" | "business_card") =>
+    db.insert(expenses).values({ paidOn: d(-ago), vendor: designer.name, categoryId: cat["Contract labor"], amountCents: cents, paymentMethod, payeeId: designer.id, description: "Design work" }).run();
+  pay(70, 1200_00, "check");
+  pay(25, 1000_00, "check");
+  pay(12, 300_00, "business_card");
+
   db.insert(otherIncome).values({ receivedOn: d(-160), source: "Workshop speaking fee", amountCents: 500_00 }).run();
   db.insert(otherIncome).values({ receivedOn: addMonths(today, -6), source: "Referral bonus", clientId: cedar.id, amountCents: 250_00 }).run();
 }

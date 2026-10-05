@@ -55,6 +55,7 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
       saved: `${parsed.input.vendor} (${formatCents(parsed.input.amountCents)})`,
       date: parsed.input.paidOn,
       method: parsed.input.paymentMethod,
+      ...(str(fd, "returnTo") === "payee" && parsed.input.payeeId ? { payee: String(parsed.input.payeeId) } : {}),
     });
     redirect(`/expenses/new?${q}`);
   }

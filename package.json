@@ -19,13 +19,16 @@
     "service:status": "tsx scripts/service.ts status",
     "service:logs": "tsx scripts/service.ts logs",
     "update": "sh scripts/update.sh",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "db:wipe": "tsx scripts/wipe.ts",
+    "demo": "tsx scripts/demo.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",
+    "fflate": "^0.8.3",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",

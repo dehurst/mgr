@@ -35,7 +35,7 @@ export function SettingsForm({ settings: s }: { settings: BusinessSettings }) {
             hint="Printed as the payer's TIN on 1099s. Not shown on invoices."
             error={e.taxId}
           >
-            <Input id="taxId" name="taxId" defaultValue={s.taxId} placeholder="12-3456789" />
+            <Input key={s.taxId} id="taxId" name="taxId" defaultValue={s.taxId} placeholder="12-3456789" />
           </Field>
           <Field label="Address" htmlFor="address" className="sm:row-span-2">
             <Textarea id="address" name="address" defaultValue={s.address} rows={4} />

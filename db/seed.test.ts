@@ -16,7 +16,7 @@ describe("demo seed", () => {
     expect([...statuses].sort()).toEqual(["draft", "overdue", "paid", "sent", "void"]);
     const all = { from: "2000-01-01", to: "2099-12-31" };
     const pnl = computePnl(loadIncome(db, all), loadExpenses(db, all));
-    expect(pnl.expensesCents).toBe(4099_77);
+    expect(pnl.expensesCents).toBe(6599_77); // includes $2,500 paid to the demo contractor
     expect(pnl.incomeCents).toBeGreaterThan(0);
     expect(computeAging(listInvoiceSummaries(db, "2026-10-03"), "2026-10-03").totalCents).toBeGreaterThan(0);
   });
