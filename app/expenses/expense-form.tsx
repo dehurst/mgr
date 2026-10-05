@@ -18,18 +18,30 @@ export function ExpenseForm({
   expense,
   categories,
   clients,
+  payees,
   vendors,
   defaults,
 }: {
   expense?: Expense;
   categories: (Option & { archivedAt: string | null; businessPct: number; scheduleCLine: string })[];
   clients: Option[];
+  payees: Option[];
   vendors: string[];
-  defaults: { paidOn: string; paymentMethod: string };
+  /** payeeId/categoryId pre-fill "record a payment" from a payee's page, which is returned to after saving. */
+  defaults: { paidOn: string; paymentMethod: string; payeeId?: number; categoryId?: number };
 }) {
   const { state, errors: e, onSubmit, pending } = useFormAction(saveExpense.bind(null, expense?.id ?? null));
-  const [categoryId, setCategoryId] = useState(String(expense?.categoryId ?? ""));
-  const [businessPct, setBusinessPct] = useState(String(expense?.businessPct ?? 100));
+  const initialCategory = categories.find((c) => c.id === (expense?.categoryId ?? defaults.categoryId));
+  const [categoryId, setCategoryId] = useState(String(initialCategory?.id ?? ""));
+  const [businessPct, setBusinessPct] = useState(String(expense?.businessPct ?? initialCategory?.businessPct ?? 100));
+  const [payeeId, setPayeeId] = useState(String(expense?.payeeId ?? defaults.payeeId ?? ""));
+  const [vendor, setVendor] = useState(expense?.vendor ?? payees.find((p) => String(p.id) === payeeId)?.name ?? "");
+  // Picking a payee fills in the vendor when it's blank.
+  const changePayee = (id: string) => {
+    setPayeeId(id);
+    const p = payees.find((x) => String(x.id) === id);
+    if (p && !vendor.trim()) setVendor(p.name);
+  };
   const category = categories.find((c) => String(c.id) === categoryId);
   const isPersonalCategory = category?.scheduleCLine === PERSONAL_LINE;
   // Picking a category pre-fills its default business-use %; it can still be changed per expense.
@@ -41,6 +53,7 @@ export function ExpenseForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-6">
+      {defaults.payeeId && !expense && <input type="hidden" name="returnTo" value="payee" />}
       {state.message && !state.ok && <Alert variant="destructive">{state.message}</Alert>}
       <Card>
         <CardContent className="grid gap-4 sm:grid-cols-3">
@@ -48,7 +61,16 @@ export function ExpenseForm({
             <Input id="paidOn" name="paidOn" type="date" defaultValue={expense?.paidOn ?? defaults.paidOn} required />
           </Field>
           <Field label="Vendor / payee" htmlFor="vendor" error={e.vendor} className="sm:col-span-2">
-            <Input id="vendor" name="vendor" list="vendor-list" defaultValue={expense?.vendor} placeholder="e.g. Adobe" required autoFocus={!expense} />
+            <Input
+              id="vendor"
+              name="vendor"
+              list="vendor-list"
+              value={vendor}
+              onChange={(ev) => setVendor(ev.target.value)}
+              placeholder="e.g. Adobe"
+              required
+              autoFocus={!expense && !defaults.payeeId}
+            />
             <datalist id="vendor-list">
               {vendors.map((v) => (
                 <option key={v} value={v} />
@@ -113,7 +135,22 @@ export function ExpenseForm({
               ))}
             </Select>
           </Field>
-          <Field label="Receipt (optional)" htmlFor="receipt" hint="Photo or PDF, up to 10 MB." error={e.receipt} className="sm:col-span-3">
+          <Field
+            label="Payee (1099 contractor)"
+            htmlFor="payeeId"
+            hint={payeeId ? "Counts toward their 1099-NEC unless paid by card or Venmo/PayPal goods & services." : "Only for people you pay for work."}
+            error={e.payeeId}
+          >
+            <Select id="payeeId" name="payeeId" value={payeeId} onChange={(ev) => changePayee(ev.target.value)}>
+              <option value="">None</option>
+              {payees.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Receipt (optional)" htmlFor="receipt" hint="Photo or PDF, up to 10 MB." error={e.receipt} className="sm:col-span-2">
             <Input id="receipt" name="receipt" type="file" accept="image/png,image/jpeg,image/heic,image/webp,application/pdf" />
             {expense?.receiptPath && (
               <div className="mt-1 flex items-center gap-4 text-sm">
@@ -137,7 +174,7 @@ export function ExpenseForm({
             Save and add another
           </Button>
         )}
-        <Link href="/expenses" className={buttonVariants({ variant: "ghost" })}>
+        <Link href={defaults.payeeId && !expense ? `/payees/${defaults.payeeId}` : "/expenses"} className={buttonVariants({ variant: "ghost" })}>
           Cancel
         </Link>
       </div>

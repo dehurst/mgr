@@ -7,6 +7,7 @@ const REPORTS = [
   { href: "/reports/aging", title: "Accounts receivable aging", text: "Who owes you, and how late: current, 1–30, 31–60, 61–90, 90+ days." },
   { href: "/reports/income-by-client", title: "Income by client", text: "What each client paid you in a period." },
   { href: "/reports/tax", title: "Tax summary (Schedule C)", text: "Expenses rolled up by Schedule C line for a tax year. Hand this to your CPA." },
+  { href: "/reports/1099", title: "1099-NEC summary", text: "Which payees need a 1099 for a year, for how much, and their recipient copies." },
 ];
 
 export default function ReportsPage() {

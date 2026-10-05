@@ -20,6 +20,8 @@ export const EXPENSE_PAYMENT_METHODS = [
   "bank_transfer",
   "cash",
   "check",
+  "p2p_personal",
+  "p2p_goods",
   "other",
 ] as const;
 export type ExpensePaymentMethod = (typeof EXPENSE_PAYMENT_METHODS)[number];
@@ -38,6 +40,8 @@ export const businessSettings = sqliteTable(
     invoicePrefix: text("invoice_prefix").notNull().default("INV-"),
     nextInvoiceNumber: integer("next_invoice_number").notNull().default(1001),
     paymentInstructions: text("payment_instructions").notNull().default(""),
+    /** Payer TIN printed on 1099s this business issues (EIN preferred over SSN). */
+    taxId: text("tax_id").notNull().default(""),
     invoiceEmailSubject: text("invoice_email_subject").notNull().default(""),
     invoiceEmailBody: text("invoice_email_body").notNull().default(""),
     reminderEmailSubject: text("reminder_email_subject").notNull().default(""),
@@ -63,6 +67,39 @@ export const clients = sqliteTable("clients", {
   archivedAt: text("archived_at"),
   ...timestamps,
 });
+
+/** Federal tax classification from the payee's W-9 (simplified to what decides 1099 filing). */
+export const TAX_CLASSIFICATIONS = ["individual", "partnership", "corporation", "other"] as const;
+export type TaxClassification = (typeof TAX_CLASSIFICATIONS)[number];
+export const TIN_TYPES = ["ssn", "ein"] as const;
+export type TinType = (typeof TIN_TYPES)[number];
+
+/**
+ * People and companies the business pays for work (1099 contractors). Payments to them are
+ * expenses with `payee_id` set. Only the last 4 digits of their TIN are stored.
+ */
+export const payees = sqliteTable(
+  "payees",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** W-9 line 1: the name on their tax return. */
+    name: text("name").notNull(),
+    /** W-9 line 2: business / DBA name, if different. */
+    businessName: text("business_name").notNull().default(""),
+    email: text("email").notNull().default(""),
+    address: text("address").notNull().default(""),
+    taxClassification: text("tax_classification", { enum: TAX_CLASSIFICATIONS }),
+    /** Attorneys get a 1099-NEC even when they're a corporation. */
+    isAttorney: integer("is_attorney", { mode: "boolean" }).notNull().default(false),
+    tinType: text("tin_type", { enum: TIN_TYPES }),
+    tinLast4: text("tin_last4"),
+    w9ReceivedOn: text("w9_received_on"),
+    notes: text("notes").notNull().default(""),
+    archivedAt: text("archived_at"),
+    ...timestamps,
+  },
+  (t) => [check("payees_tin_last4", sql`${t.tinLast4} is null or (length(${t.tinLast4}) = 4 and ${t.tinLast4} not glob '*[^0-9]*')`)],
+);
 
 export const invoices = sqliteTable(
   "invoices",
@@ -158,6 +195,8 @@ export const expenses = sqliteTable(
     businessPct: integer("business_pct").notNull().default(100),
     receiptPath: text("receipt_path"),
     clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+    /** Set when this is a payment to a contractor; counts toward their 1099-NEC. */
+    payeeId: integer("payee_id").references(() => payees.id, { onDelete: "restrict" }),
     ...timestamps,
   },
   (t) => [
@@ -189,6 +228,7 @@ export const otherIncome = sqliteTable(
 
 export type BusinessSettings = typeof businessSettings.$inferSelect;
 export type Client = typeof clients.$inferSelect;
+export type Payee = typeof payees.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type Payment = typeof payments.$inferSelect;

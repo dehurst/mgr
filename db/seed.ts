@@ -4,10 +4,10 @@ import type { Db } from "@/db";
 import { addDays, addMonths, type DateStr } from "@/lib/dates";
 import { createInvoice, suggestInvoiceNumber, voidInvoice } from "@/lib/invoices";
 import { markSent, recordPayment } from "@/lib/payments";
-import { businessSettings, clients, expenseCategories, expenses, invoices, otherIncome } from "./schema";
+import { businessSettings, clients, expenseCategories, expenses, invoices, otherIncome, payees } from "./schema";
 
 export function hasData(db: Db): boolean {
-  return [clients, invoices, expenses, otherIncome].some((t) => db.select().from(t).limit(1).all().length > 0);
+  return [clients, invoices, expenses, otherIncome, payees].some((t) => db.select().from(t).limit(1).all().length > 0);
 }
 
 export function seedDemo(db: Db, today: DateStr): void {

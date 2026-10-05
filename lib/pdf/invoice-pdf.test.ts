@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { openDb } from "@/db";
-import { businessSettings, clients, invoices } from "@/db/schema";
+import { businessSettings, clients, invoices, payees } from "@/db/schema";
 import { createInvoice, getInvoiceDetail } from "@/lib/invoices";
 import { invoicePdfFilename, renderInvoicePdf } from "./invoice-pdf";
 
@@ -27,5 +27,17 @@ describe("invoice PDF", () => {
   it("builds a safe filename", () => {
     expect(invoicePdfFilename("INV-1001", "DEHurst Enterprises, LLC")).toBe("INV-1001 - DEHurst Enterprises LLC.pdf");
     expect(invoicePdfFilename("INV/../1", "")).toBe("INV..1.pdf");
+  });
+});
+
+describe("1099-NEC recipient copy", () => {
+  it("renders a valid PDF", async () => {
+    const { render1099Pdf, form1099Filename } = await import("./form-1099-pdf");
+    const db = openDb(":memory:");
+    const settings = db.update(businessSettings).set({ businessName: "Test Co", taxId: "12-3456789" }).returning().get();
+    const payee = db.insert(payees).values({ name: "Jane Smith", address: "1 Main St", tinType: "ssn", tinLast4: "6789" }).returning().get();
+    const buf = await render1099Pdf({ year: 2026, payee, amountCents: 2_500_00, settings });
+    expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(form1099Filename(2026, "Jane O'Smith")).toBe("1099-NEC 2026 - Jane OSmith.pdf");
   });
 });

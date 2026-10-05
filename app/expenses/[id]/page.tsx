@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { clients } from "@/db/schema";
 import { categoryOptions, getExpense, recentVendors } from "@/lib/expenses";
 import { formatCents } from "@/lib/money";
+import { payeeOptions } from "@/lib/payees";
 import { deleteExpense } from "../actions";
 import { ExpenseForm } from "../expense-form";
 
@@ -39,6 +40,7 @@ export default async function EditExpensePage({ params }: PageProps<"/expenses/[
         expense={expense}
         categories={categoryOptions(db, expense.categoryId)}
         clients={clientOptions}
+        payees={payeeOptions(db, expense.payeeId)}
         vendors={recentVendors(db)}
         defaults={{ paidOn: expense.paidOn, paymentMethod: expense.paymentMethod }}
       />

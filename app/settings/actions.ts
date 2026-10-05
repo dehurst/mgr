@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { businessSettings, expenseCategories, invoices } from "@/db/schema";
 import { file, int, looksLikeEmail, str, type ActionState, type FieldErrors } from "@/lib/form";
 import { isCategoryLine } from "@/lib/schedule-c";
+import { parseTaxId } from "@/lib/settings-rules";
 import { applyBusinessPctToCategory, parseBusinessPct } from "@/lib/expenses";
 import type { Db } from "@/db";
 import { getSettings } from "@/lib/settings";
@@ -18,12 +19,14 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
   const defaultTermsDays = int(fd, "defaultTermsDays");
   const invoicePrefix = str(fd, "invoicePrefix");
   const nextInvoiceNumber = int(fd, "nextInvoiceNumber");
+  const taxId = parseTaxId(str(fd, "taxId"));
 
   if (!businessName) errors.businessName = "Required.";
   if (email && !looksLikeEmail(email)) errors.email = "Doesn't look like an email address.";
   if (defaultTermsDays === null || defaultTermsDays > 365) errors.defaultTermsDays = "Enter 0–365 days.";
   if (!/^[A-Za-z0-9_\-/.#]{0,12}$/.test(invoicePrefix))
     errors.invoicePrefix = "Up to 12 letters, digits, or - _ / . #";
+  if (taxId === null) errors.taxId = "Enter 9 digits, like 12-3456789.";
   if (nextInvoiceNumber === null || nextInvoiceNumber < 1) errors.nextInvoiceNumber = "Enter a whole number ≥ 1.";
 
   const db = getDb();
@@ -60,6 +63,7 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
       invoicePrefix,
       nextInvoiceNumber: nextInvoiceNumber!,
       paymentInstructions: str(fd, "paymentInstructions"),
+      taxId: taxId!,
     })
     .where(eq(businessSettings.id, 1))
     .run();

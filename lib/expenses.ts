@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { clients, EXPENSE_PAYMENT_METHODS, expenseCategories, expenses, type ExpensePaymentMethod } from "@/db/schema";
+import { clients, EXPENSE_PAYMENT_METHODS, expenseCategories, expenses, payees, type ExpensePaymentMethod } from "@/db/schema";
 import { isValidDate, type DateRange, type DateStr } from "./dates";
 import type { FieldErrors } from "./form";
 import { parseCents, sumCents } from "./money";
@@ -16,11 +16,12 @@ export type ExpenseInput = {
   paymentMethod: ExpensePaymentMethod;
   description: string;
   clientId: number | null;
+  payeeId: number | null;
   businessPct: number;
 };
 
 export function parseExpenseForm(
-  raw: Record<"paidOn" | "vendor" | "categoryId" | "amount" | "paymentMethod" | "description" | "clientId" | "businessPct", string>,
+  raw: Record<"paidOn" | "vendor" | "categoryId" | "amount" | "paymentMethod" | "description" | "clientId" | "payeeId" | "businessPct", string>,
 ): { ok: true; input: ExpenseInput } | { ok: false; errors: FieldErrors } {
   const errors: FieldErrors = {};
   if (!isValidDate(raw.paidOn)) errors.paidOn = "Enter a valid date.";
@@ -32,6 +33,8 @@ export function parseExpenseForm(
   if (!(EXPENSE_PAYMENT_METHODS as readonly string[]).includes(raw.paymentMethod)) errors.paymentMethod = "Pick how you paid.";
   const clientId = raw.clientId ? Number(raw.clientId) : null;
   if (clientId !== null && (!Number.isSafeInteger(clientId) || clientId <= 0)) errors.clientId = "Pick a client or leave blank.";
+  const payeeId = raw.payeeId ? Number(raw.payeeId) : null;
+  if (payeeId !== null && (!Number.isSafeInteger(payeeId) || payeeId <= 0)) errors.payeeId = "Pick a payee or leave blank.";
   const businessPct = parseBusinessPct(raw.businessPct);
   if (businessPct === null) errors.businessPct = "Enter a whole number from 1 to 100.";
   if (Object.keys(errors).length) return { ok: false, errors };
@@ -46,6 +49,7 @@ export function parseExpenseForm(
       paymentMethod: raw.paymentMethod as ExpensePaymentMethod,
       description: raw.description,
       clientId,
+      payeeId,
     },
   };
 }
@@ -58,7 +62,16 @@ export function checkCategory(db: Db, categoryId: number, currentCategoryId?: nu
   return null;
 }
 
-export type ExpenseFilter = { range: DateRange; categoryId?: number };
+/** Like checkCategory: archived payees stay on old expenses but can't be picked for new ones. */
+export function checkPayee(db: Db, payeeId: number | null, currentPayeeId?: number | null): string | null {
+  if (payeeId === null) return null;
+  const p = db.select().from(payees).where(eq(payees.id, payeeId)).get();
+  if (!p) return "That payee no longer exists.";
+  if (p.archivedAt && p.id !== currentPayeeId) return "That payee is archived. Pick another or restore it.";
+  return null;
+}
+
+export type ExpenseFilter = { range: DateRange; categoryId?: number; payeeId?: number };
 
 export function listExpenses(db: Db, f: ExpenseFilter) {
   const rows = db
@@ -76,6 +89,7 @@ export function listExpenses(db: Db, f: ExpenseFilter) {
       receiptPath: expenses.receiptPath,
       clientId: expenses.clientId,
       clientName: clients.name,
+      payeeId: expenses.payeeId,
     })
     .from(expenses)
     .innerJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
@@ -85,6 +99,7 @@ export function listExpenses(db: Db, f: ExpenseFilter) {
         gte(expenses.paidOn, f.range.from),
         lte(expenses.paidOn, f.range.to),
         f.categoryId ? eq(expenses.categoryId, f.categoryId) : undefined,
+        f.payeeId ? eq(expenses.payeeId, f.payeeId) : undefined,
       ),
     )
     .orderBy(desc(expenses.paidOn), desc(expenses.id))

@@ -1,8 +1,8 @@
 // Loads plain rows for reports. All report math lives in the pure functions next to this file;
 // this is the only place reports touch the database.
-import { and, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lte } from "drizzle-orm";
 import type { Db } from "@/db";
-import { clients, expenseCategories, expenses, invoices, otherIncome, payments } from "@/db/schema";
+import { clients, expenseCategories, expenses, invoices, otherIncome, payees, payments, type Payee } from "@/db/schema";
 import type { DateRange, DateStr } from "@/lib/dates";
 import { businessShareCents } from "@/lib/money";
 import { PERSONAL_LINE } from "@/lib/schedule-c";
@@ -110,4 +110,26 @@ export function loadExpenses(db: Db, range: DateRange): ExpenseRow[] {
     .where(and(gte(expenses.paidOn, range.from), lte(expenses.paidOn, range.to)))
     .orderBy(expenses.paidOn, expenses.id)
     .all();
+}
+
+/** Expenses linked to a payee within the range, plus every payee, for the 1099 report. */
+export function loadPayeePayments(db: Db, range: DateRange) {
+  const rows = db
+    .select({
+      id: expenses.id,
+      payeeId: expenses.payeeId,
+      date: expenses.paidOn,
+      amountCents: expenses.amountCents,
+      businessPct: expenses.businessPct,
+      scheduleCLine: expenseCategories.scheduleCLine,
+      paymentMethod: expenses.paymentMethod,
+    })
+    .from(expenses)
+    .innerJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
+    .where(and(isNotNull(expenses.payeeId), gte(expenses.paidOn, range.from), lte(expenses.paidOn, range.to)))
+    .orderBy(expenses.paidOn, expenses.id)
+    .all()
+    .map((r) => ({ ...r, payeeId: r.payeeId! }));
+  const payeeList: Payee[] = db.select().from(payees).all();
+  return { rows, payees: payeeList };
 }

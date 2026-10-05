@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/invoices", label: "Invoices" },
   { href: "/clients", label: "Clients" },
   { href: "/expenses", label: "Expenses" },
+  { href: "/payees", label: "Payees" },
   { href: "/income", label: "Other income" },
   { href: "/reports", label: "Reports" },
   { href: "/settings", label: "Settings" },

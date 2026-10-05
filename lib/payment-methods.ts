@@ -15,5 +15,7 @@ export const EXPENSE_METHOD_LABELS: Record<ExpensePaymentMethod, string> = {
   bank_transfer: "Bank transfer",
   cash: "Cash",
   check: "Check",
+  p2p_personal: "Venmo / PayPal (friends & family)",
+  p2p_goods: "Venmo / PayPal (goods & services)",
   other: "Other",
 };

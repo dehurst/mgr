@@ -33,6 +33,7 @@ describe("parseExpenseForm", () => {
     paymentMethod: "business_card",
     description: "",
     clientId: "",
+    payeeId: "",
     businessPct: "",
   };
   it("parses cents, optional client, and business % (blank = 100)", () => {

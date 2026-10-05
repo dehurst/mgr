@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { expenses } from "@/db/schema";
-import { checkCategory, getExpense, parseExpenseForm } from "@/lib/expenses";
+import { checkCategory, checkPayee, getExpense, parseExpenseForm } from "@/lib/expenses";
 import { file, str, type ActionState } from "@/lib/form";
 import { formatCents } from "@/lib/money";
 import { deleteUpload, RECEIPT_TYPES, saveUpload } from "@/lib/uploads";
@@ -19,6 +19,7 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
     paymentMethod: str(fd, "paymentMethod"),
     description: str(fd, "description"),
     clientId: str(fd, "clientId"),
+    payeeId: str(fd, "payeeId"),
     businessPct: str(fd, "businessPct"),
   });
   if (!parsed.ok) return { ok: false, errors: parsed.errors, message: "Please fix the highlighted fields." };
@@ -28,6 +29,8 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
   if (id && !existing) return { ok: false, message: "Expense not found." };
   const catError = checkCategory(db, parsed.input.categoryId, existing?.categoryId);
   if (catError) return { ok: false, errors: { categoryId: catError } };
+  const payeeError = checkPayee(db, parsed.input.payeeId, existing?.payeeId);
+  if (payeeError) return { ok: false, errors: { payeeId: payeeError } };
 
   let receiptPath = existing?.receiptPath ?? null;
   const upload = file(fd, "receipt");
@@ -55,7 +58,7 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
     });
     redirect(`/expenses/new?${q}`);
   }
-  redirect("/expenses");
+  redirect(str(fd, "returnTo") === "payee" && parsed.input.payeeId ? `/payees/${parsed.input.payeeId}` : "/expenses");
 }
 
 export async function deleteExpense(id: number): Promise<string | void> {

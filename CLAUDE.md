@@ -56,7 +56,15 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
    function. Reconciliation is tested: P&L expense total == expense report total == the tax
    summary's recorded total. The tax summary's line 24b (and so line 28 and net) uses the
    deductible 50% of meals (`halfCents`, rounded half up); P&L and expense reports show cash spent.
-10. **Overpayment is rejected.** A payment can't exceed the invoice's open balance. An invoice
+10. **Payments you send are expenses.** A payment to a contractor is an expense with `payee_id`
+   set; there is no separate outgoing-payments table. The 1099-NEC math lives in
+   `lib/reports/form-1099.ts`: box 1 = business share of that payee's expenses in the calendar year,
+   excluding card and Venmo/PayPal goods-&-services payments (reported on the network's 1099-K).
+   Threshold: $600 through 2025, $2,000 from 2026 (inflation-indexed from 2027: update
+   `threshold1099`). Corporations are exempt unless `is_attorney`. Only the last 4 digits of a
+   payee's TIN are stored; the full number goes into IRS IRIS from the W-9. The app prints Copy B
+   (recipient) only, never Copy A.
+11. **Overpayment is rejected.** A payment can't exceed the invoice's open balance. An invoice
    with active payments can't be voided until those payments are voided.
 
 ## Stack
@@ -76,19 +84,21 @@ Line items are always hourly (quantity = hours). No one else bills under this bu
 ## Layout
 
 ```
-app/                 routes (dashboard, expenses, invoices, clients, reports, settings)
+app/                 routes (dashboard, expenses, payees, invoices, clients, reports, settings)
 components/          UI; components/ui = shadcn
 lib/money.ts         cents parsing/formatting/rounding
 lib/dates.ts         date strings, ranges (this month, last quarter, YTD, ...)
 lib/invoice-status.ts deriveStatus, balance, totals (pure)
 lib/invoices.ts      invoice rules + queries; functions take `db` so tests use in-memory SQLite
 lib/clients.ts       client validation, totals (billed/paid/balance exclude drafts and voids)
-lib/pdf/             @react-pdf invoice template; served by app/invoices/[id]/pdf/route.ts
+lib/pdf/             @react-pdf invoice template (app/invoices/[id]/pdf) and 1099-NEC Copy B
+                     (app/payees/[id]/1099?year=)
 lib/expenses.ts      expense validation, filtered list + total, archived-category rules
 lib/other-income.ts  other income validation + list
+lib/payees.ts        payee (1099 contractor) validation, list with yearly 1099 totals, delete rules
 lib/range.ts         ?range=preset or ?from&to -> {from,to}; used with components/range-filter.tsx
 lib/reports/         data.ts loads plain rows (the only DB access); pnl/expenses/aging/
-                     income-by-client/tax are pure; index.ts builds each report + its CSV table
+                     income-by-client/tax/form-1099 are pure; index.ts builds each report + its CSV table
 lib/dashboard.ts     dashboard numbers + recent activity
 lib/csv.ts           CSV serialization
 db/schema.ts         Drizzle schema
@@ -115,11 +125,16 @@ uploads/             receipts + logo (gitignored)
   payment on a draft marks it sent on the payment date, "un-send" only with no active payments.
   Manual `sent_at` is stored as noon UTC of the chosen date (`sentAtFor`).
 - `expenses`: `paid_on`, vendor, category, `amount_cents` (full amount paid), `business_pct`,
-  payment method, description, receipt path, optional client, timestamps.
+  payment method, description, receipt path, optional client, optional payee, timestamps.
+- `payees`: 1099 contractors. Name (W-9 line 1), business name, email, address, tax
+  classification, `is_attorney`, `tin_type` + `tin_last4` (never the full TIN), `w9_received_on`,
+  notes, `archived_at`. Deletable only with no linked expenses; otherwise archive.
+  `business_settings.tax_id` is the payer TIN printed on 1099s.
 - `expense_categories`: name, `schedule_c_line` (a Schedule C line, or `personal`), default
   `business_pct`, `archived_at`. Saving a category can apply its % to past expenses.
 - Migration 0003 is hand-written (`ADD COLUMN`): drizzle-kit's table rebuild would have failed on
   existing data. Check generated SQL before committing; prefer `ADD COLUMN` for new columns.
+  (0004_payees was generated as plain `CREATE TABLE` + `ADD COLUMN` and kept as is.)
 - `other_income`: `received_on`, source, optional `client_id` (for the Jan–Sep 2026 QBO backfill:
   one entry per client per month), `amount_cents`, notes, `voided_at`. The UI hard-deletes; reports
   must still exclude `voided_at` rows.
@@ -197,4 +212,5 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 4. ✅ Expenses (CRUD, receipts, date-range + category filters, "save and add another") + other income.
 5. ✅ Dashboard + reports (P&L with prior-period compare, expense report with drill-down, A/R aging,
    income by client, Schedule C summary) + CSV (`/reports/csv?report=…`) and print-to-PDF.
+   Later: payees + 1099-NEC summary (`/reports/1099`, CSV `report=1099`) and recipient-copy PDFs.
 6. Backup, full CSV export, demo DB/seed/wipe, README, polish.

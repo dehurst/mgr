@@ -6,7 +6,8 @@ import { formatDate, priorRange, type DateRange, type DateStr } from "@/lib/date
 import { listInvoiceSummaries } from "@/lib/invoices";
 import { centsToInput } from "@/lib/money";
 import { AGING_BUCKETS, AGING_LABELS, computeAging } from "./aging";
-import { loadExpenses, loadIncome, splitExpense } from "./data";
+import { loadExpenses, loadIncome, loadPayeePayments, splitExpense } from "./data";
+import { FORM_1099_STATUS_LABELS, form1099Rows, maskedTin, threshold1099 } from "./form-1099";
 import { expenseReport } from "./expenses";
 import { incomeByClient } from "./income-by-client";
 import { computePnl, type Pnl } from "./pnl";
@@ -77,6 +78,30 @@ export function expensesCsv(r: ReturnType<typeof expensesReportData>): Cell[][] 
     [],
     ["By vendor", "", "Count", "Amount"],
     ...r.byVendor.map((v) => [v.vendor, "", v.count, $(v.cents)]),
+  ];
+}
+
+export function form1099Report(db: Db, year: number) {
+  const range = { from: `${year}-01-01`, to: `${year}-12-31` };
+  const { rows, payees } = loadPayeePayments(db, range);
+  return { year, range, threshold: threshold1099(year), rows: form1099Rows(payees, rows, year) };
+}
+
+export function form1099Csv(r: ReturnType<typeof form1099Report>): Cell[][] {
+  return [
+    [`1099-NEC summary, tax year ${r.year} (threshold ${$(r.threshold.cents)})`],
+    [],
+    ["Payee", "Business name", "Tax ID", "Address", "Box 1 nonemployee compensation", "Paid by card / Venmo-PayPal goods & services (not on 1099-NEC)", "Status", "Missing"],
+    ...r.rows.map((x) => [
+      x.payee.name,
+      x.payee.businessName,
+      maskedTin(x.payee),
+      x.payee.address,
+      $(x.reportableCents),
+      $(x.networkCents),
+      FORM_1099_STATUS_LABELS[x.status],
+      x.missing.join(", "),
+    ]),
   ];
 }
 

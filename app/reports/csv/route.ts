@@ -7,6 +7,8 @@ import {
   agingReport,
   expensesCsv,
   expensesReportData,
+  form1099Csv,
+  form1099Report,
   incomeByClientCsv,
   incomeByClientReport,
   pnlCsv,
@@ -15,7 +17,7 @@ import {
   taxReport,
 } from "@/lib/reports";
 
-// GET /reports/csv?report=pnl|expenses|aging|income-by-client|tax&range=…|from=…&to=…|year=…
+// GET /reports/csv?report=pnl|expenses|aging|income-by-client|tax|1099&range=…|from=…&to=…|year=…
 export async function GET(req: Request) {
   const sp = Object.fromEntries(new URL(req.url).searchParams);
   const db = getDb();
@@ -33,6 +35,10 @@ export async function GET(req: Request) {
     case "tax": {
       const year = Number(sp.year) || Number(today().slice(0, 4));
       return csvResponse(`schedule-c-summary_${year}.csv`, taxCsv(taxReport(db, year)));
+    }
+    case "1099": {
+      const year = Number(sp.year) || Number(today().slice(0, 4));
+      return csvResponse(`1099-nec-summary_${year}.csv`, form1099Csv(form1099Report(db, year)));
     }
     default:
       return new Response("Unknown report", { status: 400 });
