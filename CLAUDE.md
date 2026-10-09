@@ -192,7 +192,9 @@ BACKUP_DIR=/path/to/cloud-synced/folder
   `onSubmit` + `useActionState` so React doesn't reset inputs on validation errors. Server actions
   return `ActionState` (`lib/form.ts`).
 - Uploaded files live in `UPLOADS_DIR` and are served by `app/files/[...path]/route.ts`
-  (path-traversal guarded). Only the relative path is stored in the DB.
+  (path-traversal guarded). Only the relative path is stored in the DB. Receipts are shown through
+  `app/expenses/[id]/receipt` (inline, or `?download=1` as "Receipt <date> <vendor> <amount>.<ext>")
+  in `components/receipt-viewer.tsx`, a native `<dialog>` overlay, so viewing never leaves the page.
 - UI components are hand-written in shadcn style (`components/ui/`); native `<select>` and
   `confirm()` stand in for Radix Select/Dialog to keep dependencies down.
 

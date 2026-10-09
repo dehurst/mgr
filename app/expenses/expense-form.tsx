@@ -7,7 +7,10 @@ import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { Alert, Card, CardContent } from "@/components/ui/misc";
 import { useFormAction } from "@/components/use-form-action";
 import { EXPENSE_PAYMENT_METHODS, type Expense } from "@/db/schema";
-import { centsToInput } from "@/lib/money";
+import { ReceiptViewer } from "@/components/receipt-viewer";
+import { formatDate } from "@/lib/dates";
+import { centsToInput, formatCents } from "@/lib/money";
+import { receiptKind } from "@/lib/receipts";
 import { EXPENSE_METHOD_LABELS } from "@/lib/payment-methods";
 import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { saveExpense } from "./actions";
@@ -154,8 +157,15 @@ export function ExpenseForm({
             <Input id="receipt" name="receipt" type="file" accept="image/png,image/jpeg,image/heic,image/webp,application/pdf" />
             {expense?.receiptPath && (
               <div className="mt-1 flex items-center gap-4 text-sm">
-                <a href={`/files/${expense.receiptPath}`} target="_blank" rel="noreferrer" className="underline">
-                  View current receipt
+                <ReceiptViewer
+                  expenseId={expense.id}
+                  kind={receiptKind(expense.receiptPath)}
+                  title={`${expense.vendor} · ${formatDate(expense.paidOn)} · ${formatCents(expense.amountCents)}`}
+                  triggerLabel="View current receipt"
+                  triggerClassName="underline"
+                />
+                <a href={`/expenses/${expense.id}/receipt?download=1`} download className="underline">
+                  Download
                 </a>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" name="removeReceipt" /> Remove it

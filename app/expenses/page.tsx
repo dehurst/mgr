@@ -13,6 +13,8 @@ import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { expenseCategories } from "@/db/schema";
 import { asc } from "drizzle-orm";
 import { MonthChart } from "@/components/month-chart";
+import { ReceiptViewer } from "@/components/receipt-viewer";
+import { receiptKind } from "@/lib/receipts";
 import { loadExpenses } from "@/lib/reports/data";
 import { axisTicks, expensesByMonth } from "@/lib/reports/expenses";
 
@@ -119,9 +121,12 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
                     <TableCell className="text-muted-foreground">{EXPENSE_METHOD_LABELS[r.paymentMethod]}</TableCell>
                     <TableCell>
                       {r.receiptPath ? (
-                        <a href={`/files/${r.receiptPath}`} target="_blank" rel="noreferrer" className="text-sm underline">
-                          View
-                        </a>
+                        <span className="flex gap-3 whitespace-nowrap">
+                          <ReceiptViewer expenseId={r.id} kind={receiptKind(r.receiptPath)} title={`${r.vendor} · ${formatDate(r.paidOn)} · ${formatCents(r.amountCents)}`} />
+                          <a href={`/expenses/${r.id}/receipt?download=1`} download className="text-sm underline">
+                            Download
+                          </a>
+                        </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
