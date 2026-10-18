@@ -11,6 +11,8 @@ import { ReceiptViewer } from "@/components/receipt-viewer";
 import { formatDate } from "@/lib/dates";
 import { centsToInput, formatCents } from "@/lib/money";
 import { receiptKind } from "@/lib/receipts";
+import { shrinkImage } from "@/lib/shrink-image";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { EXPENSE_METHOD_LABELS } from "@/lib/payment-methods";
 import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { saveExpense } from "./actions";
@@ -38,6 +40,32 @@ export function ExpenseForm({
   const [categoryId, setCategoryId] = useState(String(initialCategory?.id ?? ""));
   const [businessPct, setBusinessPct] = useState(String(expense?.businessPct ?? initialCategory?.businessPct ?? 100));
   const [payeeId, setPayeeId] = useState(String(expense?.payeeId ?? defaults.payeeId ?? ""));
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  // Shrink big photos in the browser so they fit the upload limit; reject what still doesn't.
+  const prepareReceipt = async (input: HTMLInputElement) => {
+    setReceiptError(null);
+    const file = input.files?.[0];
+    if (!file) return;
+    setPreparing(true);
+    try {
+      const ready = await shrinkImage(file);
+      if (ready.size > MAX_UPLOAD_BYTES) {
+        input.value = "";
+        setReceiptError(
+          `That file is ${(ready.size / 1024 / 1024).toFixed(1)} MB; the limit is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB. ${
+            file.type === "application/pdf" ? "Try saving the PDF smaller, or attach a photo of the receipt." : "Try a smaller photo."
+          }`,
+        );
+      } else if (ready !== file) {
+        const dt = new DataTransfer();
+        dt.items.add(ready);
+        input.files = dt.files;
+      }
+    } finally {
+      setPreparing(false);
+    }
+  };
   const [vendor, setVendor] = useState(expense?.vendor ?? payees.find((p) => String(p.id) === payeeId)?.name ?? "");
   // Picking a payee fills in the vendor when it's blank.
   const changePayee = (id: string) => {
@@ -153,8 +181,14 @@ export function ExpenseForm({
               ))}
             </Select>
           </Field>
-          <Field label="Receipt (optional)" htmlFor="receipt" hint="Photo or PDF, up to 10 MB." error={e.receipt} className="sm:col-span-2">
-            <Input id="receipt" name="receipt" type="file" accept="image/png,image/jpeg,image/heic,image/webp,application/pdf" />
+          <Field label="Receipt (optional)" htmlFor="receipt" hint={preparing ? "Preparing photo…" : "Photo or PDF. Large photos are shrunk automatically."} error={receiptError ?? e.receipt} className="sm:col-span-2">
+            <Input
+              id="receipt"
+              name="receipt"
+              type="file"
+              accept="image/png,image/jpeg,image/heic,image/webp,application/pdf"
+              onChange={(ev) => void prepareReceipt(ev.currentTarget)}
+            />
             {expense?.receiptPath && (
               <div className="mt-1 flex items-center gap-4 text-sm">
                 <ReceiptViewer
@@ -176,11 +210,11 @@ export function ExpenseForm({
         </CardContent>
       </Card>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" name="then" value="list" disabled={pending}>
+        <Button type="submit" name="then" value="list" disabled={pending || preparing}>
           {pending ? "Saving…" : expense ? "Save expense" : "Save"}
         </Button>
         {!expense && (
-          <Button type="submit" name="then" value="another" variant="outline" disabled={pending}>
+          <Button type="submit" name="then" value="another" variant="outline" disabled={pending || preparing}>
             Save and add another
           </Button>
         )}

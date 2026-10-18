@@ -1,8 +1,8 @@
 import { getDb } from "@/db";
 import { getInvoiceDetail } from "@/lib/invoices";
-import { invoicePdfFilename, renderInvoicePdf } from "@/lib/pdf/invoice-pdf";
+import { invoicePdfFilename, pdfLogo, renderInvoicePdf } from "@/lib/pdf/invoice-pdf";
 import { getSettings } from "@/lib/settings";
-import { resolveUpload } from "@/lib/uploads";
+import { readUpload } from "@/lib/uploads";
 
 // GET /invoices/:id/pdf            -> shown inline (used by the preview)
 // GET /invoices/:id/pdf?download=1 -> saved as a file
@@ -14,7 +14,7 @@ export async function GET(req: Request, ctx: RouteContext<"/invoices/[id]/pdf">)
   const pdf = await renderInvoicePdf({
     detail,
     settings,
-    logoAbsPath: settings.logoPath ? resolveUpload(settings.logoPath) : null,
+    logo: pdfLogo(settings.logoPath ? await readUpload(settings.logoPath) : null),
   });
   const filename = invoicePdfFilename(detail.invoice.number, settings.businessName);
   const download = new URL(req.url).searchParams.has("download");

@@ -1,17 +1,11 @@
-import fs from "node:fs/promises";
-import { mimeForPath, resolveUpload } from "@/lib/uploads";
+import { readUpload } from "@/lib/uploads";
 
-// Serves receipts and the logo from the uploads folder (which lives outside public/).
+// Serves the logo (and any other stored file) from local uploads/ or private Blob storage.
 export async function GET(_req: Request, ctx: RouteContext<"/files/[...path]">) {
   const { path } = await ctx.params;
-  const abs = resolveUpload(path.join("/"));
-  if (!abs) return new Response("Not found", { status: 404 });
-  try {
-    const data = await fs.readFile(abs);
-    return new Response(data, {
-      headers: { "Content-Type": mimeForPath(abs), "Cache-Control": "private, max-age=0" },
-    });
-  } catch {
-    return new Response("Not found", { status: 404 });
-  }
+  const file = await readUpload(path.join("/"));
+  if (!file) return new Response("Not found", { status: 404 });
+  return new Response(Buffer.from(file.data), {
+    headers: { "Content-Type": file.contentType, "Cache-Control": "private, max-age=0" },
+  });
 }

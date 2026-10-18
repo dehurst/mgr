@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { BusinessSettings } from "@/db/schema";
 import { formatDate } from "@/lib/dates";
@@ -34,28 +33,26 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 32, left: 48, right: 48, textAlign: "center", fontSize: 8, color: C.muted },
 });
 
-function logoSource(absPath: string | null) {
-  if (!absPath) return null;
-  try {
-    const data = fs.readFileSync(absPath);
-    const format = absPath.toLowerCase().endsWith(".png") ? "png" : "jpg";
-    return { data, format } as const;
-  } catch {
-    return null;
-  }
+/** Logo bytes for react-pdf, which reads PNG and JPEG. */
+export type PdfLogo = { data: Buffer; format: "png" | "jpg" };
+
+export function pdfLogo(file: { data: Uint8Array; contentType: string } | null): PdfLogo | null {
+  if (!file) return null;
+  if (file.contentType === "image/png") return { data: Buffer.from(file.data), format: "png" };
+  if (file.contentType === "image/jpeg") return { data: Buffer.from(file.data), format: "jpg" };
+  return null;
 }
 
 export function InvoiceDocument({
   detail,
   settings,
-  logoAbsPath,
+  logo,
 }: {
   detail: InvoiceDetail;
   settings: BusinessSettings;
-  logoAbsPath: string | null;
+  logo: PdfLogo | null;
 }) {
   const { invoice, client, lines, totalCents, paidCents } = detail;
-  const logo = logoSource(logoAbsPath);
   const balance = Math.max(0, totalCents - paidCents);
   const billTo = [client.contactName && client.contactName !== client.name ? client.contactName : "", client.billingAddress, client.email]
     .filter(Boolean)

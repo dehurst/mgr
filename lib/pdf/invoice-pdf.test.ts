@@ -19,7 +19,7 @@ describe("invoice PDF", () => {
     });
     if (!r.ok) throw new Error("create failed");
     await db.update(invoices).set({ voidedAt: "2026-01-03T00:00:00Z" }).run();
-    const buf = await renderInvoicePdf({ detail: (await getInvoiceDetail(db, r.id))!, settings, logoAbsPath: null });
+    const buf = await renderInvoicePdf({ detail: (await getInvoiceDetail(db, r.id))!, settings, logo: null });
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(buf.length).toBeGreaterThan(2000);
   });

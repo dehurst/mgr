@@ -194,8 +194,12 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 - Forms: client components use `useFormAction()` (`components/use-form-action.ts`), which submits via
   `onSubmit` + `useActionState` so React doesn't reset inputs on validation errors. Server actions
   return `ActionState` (`lib/form.ts`).
-- Uploaded files live in `UPLOADS_DIR` and are served by `app/files/[...path]/route.ts`
-  (path-traversal guarded). Only the relative path is stored in the DB. Receipts are shown through
+- Uploaded files (receipts, logo) go through `lib/uploads.ts`: `UPLOADS_DIR` on the Mac, or a
+  **private** Vercel Blob store when `BLOB_READ_WRITE_TOKEN`/`BLOB_STORE_ID` is set. Only the relative
+  path ("receipts/<name>") is stored in the DB, and files are only served through app routes
+  (`app/files/[...path]`, `app/expenses/[id]/receipt`), never by public URL. Uploads are capped at
+  4 MB (`lib/upload-limits.ts`; Vercel functions accept 4.5 MB bodies), and the expense form shrinks
+  large photos in the browser first (`lib/shrink-image.ts`). Receipts are shown through
   `app/expenses/[id]/receipt` (inline, or `?download=1` as "Receipt <date> <vendor> <amount>.<ext>")
   in `components/receipt-viewer.tsx`, a native `<dialog>` overlay, so viewing never leaves the page.
 - UI components are hand-written in shadcn style (`components/ui/`); native `<select>` and

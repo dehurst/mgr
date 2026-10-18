@@ -26,6 +26,7 @@
   "dependencies": {
     "@libsql/client": "^0.18.0",
     "@react-pdf/renderer": "^4.9.0",
+    "@vercel/blob": "^2.8.2",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",
     "fflate": "^0.8.3",
