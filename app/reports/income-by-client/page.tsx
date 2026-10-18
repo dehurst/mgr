@@ -12,13 +12,13 @@ import { getSettings } from "@/lib/settings";
 
 export default async function IncomeByClientPage({ searchParams }: PageProps<"/reports/income-by-client">) {
   const range = resolveRange(await searchParams, today(), "ytd");
-  const r = incomeByClientReport(getDb(), range);
+  const r = await incomeByClientReport(await getDb(), range);
   return (
     <>
       <ReportHeader
         title="Income by client"
         period={`${formatDate(range.from)} – ${formatDate(range.to)} · money received (cash basis)`}
-        businessName={getSettings().businessName}
+        businessName={(await getSettings()).businessName}
         csvHref={`/reports/csv?report=income-by-client&${rangeQuery(range)}`}
       />
       <Card>

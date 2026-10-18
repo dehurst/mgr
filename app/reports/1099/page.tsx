@@ -17,8 +17,8 @@ export default async function Form1099Page({ searchParams }: PageProps<"/reports
   // 1099s for a year are due Jan 31 of the next, so early in the year you're working on last year's.
   const defaultYear = Number(today().slice(5, 7)) <= 3 ? thisYear - 1 : thisYear;
   const year = Number(sp.year) >= 2000 && Number(sp.year) <= thisYear ? Number(sp.year) : defaultYear;
-  const r = form1099Report(getDb(), year);
-  const settings = getSettings();
+  const r = await form1099Report(await getDb(), year);
+  const settings = await getSettings();
   const years = Array.from({ length: 6 }, (_, i) => thisYear - i);
   const toFile = r.rows.filter((x) => x.status === "file");
 

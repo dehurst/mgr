@@ -6,56 +6,52 @@ import { openDb } from "./index";
 import * as s from "./schema";
 
 describe("database bootstrap", () => {
-  it("applies migrations and seeds settings + default categories", () => {
-    const db = openDb(":memory:");
-    const settings = db.select().from(s.businessSettings).all();
+  it("applies migrations and seeds settings + default categories", async () => {
+    const db = await openDb(":memory:");
+    const settings = await db.select().from(s.businessSettings).all();
     expect(settings).toHaveLength(1);
     expect(settings[0].nextInvoiceNumber).toBe(1001);
     expect(settings[0].invoiceEmailBody).toContain("{{invoice_number}}");
-    const cats = db.select().from(s.expenseCategories).all();
+    const cats = await db.select().from(s.expenseCategories).all();
     expect(cats).toHaveLength(DEFAULT_CATEGORIES.length + 1);
     expect(cats.filter((c) => c.scheduleCLine === PERSONAL_LINE).map((c) => c.name)).toEqual([PERSONAL_CATEGORY_NAME]);
   });
 
-  it("ensureDefaults is idempotent and never re-adds renamed or archived categories", () => {
-    const db = openDb(":memory:");
-    const first = db.select().from(s.expenseCategories).where(eq(s.expenseCategories.name, DEFAULT_CATEGORIES[0].name)).get()!;
-    db.update(s.expenseCategories)
+  it("ensureDefaults is idempotent and never re-adds renamed or archived categories", async () => {
+    const db = await openDb(":memory:");
+    const first = (await db.select().from(s.expenseCategories).where(eq(s.expenseCategories.name, DEFAULT_CATEGORIES[0].name)).get())!;
+    await db.update(s.expenseCategories)
       .set({ name: "Renamed", archivedAt: new Date().toISOString() })
       .where(eq(s.expenseCategories.id, first.id))
       .run();
-    ensureDefaults(db);
-    ensureDefaults(db);
-    const cats = db.select().from(s.expenseCategories).all();
+    await ensureDefaults(db);
+    await ensureDefaults(db);
+    const cats = await db.select().from(s.expenseCategories).all();
     expect(cats).toHaveLength(DEFAULT_CATEGORIES.length + 1);
     expect(cats.find((c) => c.name === first.name)).toBeUndefined();
-    expect(db.select().from(s.businessSettings).all()).toHaveLength(1);
+    expect(await db.select().from(s.businessSettings).all()).toHaveLength(1);
   });
 
-  it("enforces constraints: single settings row, positive amounts, FK restrict", () => {
-    const db = openDb(":memory:");
-    expect(() => db.insert(s.businessSettings).values({ id: 2 }).run()).toThrow();
+  it("enforces constraints: single settings row, positive amounts, FK restrict", async () => {
+    const db = await openDb(":memory:");
+    await expect(db.insert(s.businessSettings).values({ id: 2 }).run()).rejects.toThrow();
 
-    const cat = db.select().from(s.expenseCategories).get()!;
+    const cat = (await db.select().from(s.expenseCategories).get())!;
     const base = { paidOn: "2026-01-01", vendor: "X", categoryId: cat.id, paymentMethod: "cash" as const };
-    expect(() => db.insert(s.expenses).values({ ...base, amountCents: 0 }).run()).toThrow();
-    db.insert(s.expenses).values({ ...base, amountCents: 100 }).run();
+    await expect(db.insert(s.expenses).values({ ...base, amountCents: 0 }).run()).rejects.toThrow();
+    await db.insert(s.expenses).values({ ...base, amountCents: 100 }).run();
     // Category with expenses can't be deleted (archive instead).
-    expect(() => db.delete(s.expenseCategories).where(eq(s.expenseCategories.id, cat.id)).run()).toThrow();
+    await expect(db.delete(s.expenseCategories).where(eq(s.expenseCategories.id, cat.id)).run()).rejects.toThrow();
 
-    const client = db.insert(s.clients).values({ name: "Acme" }).returning().get();
-    const inv = db
+    const client = await db.insert(s.clients).values({ name: "Acme" }).returning().get();
+    const inv = await db
       .insert(s.invoices)
       .values({ number: "INV-1", clientId: client.id, issuedOn: "2026-01-01", dueOn: "2026-01-16" })
       .returning()
       .get();
-    expect(() =>
-      db.insert(s.invoices).values({ number: "INV-1", clientId: client.id, issuedOn: "2026-01-01", dueOn: "2026-01-16" }).run(),
-    ).toThrow(); // unique number
-    expect(() =>
-      db.insert(s.invoices).values({ number: "INV-2", clientId: client.id, issuedOn: "2026-02-01", dueOn: "2026-01-16" }).run(),
-    ).toThrow(); // due before issue
-    db.insert(s.payments).values({ invoiceId: inv.id, receivedOn: "2026-01-10", amountCents: 500, method: "venmo" }).run();
-    expect(() => db.delete(s.invoices).where(eq(s.invoices.id, inv.id)).run()).toThrow(); // has payments
+    await expect(db.insert(s.invoices).values({ number: "INV-1", clientId: client.id, issuedOn: "2026-01-01", dueOn: "2026-01-16" }).run()).rejects.toThrow(); // unique number
+    await expect(db.insert(s.invoices).values({ number: "INV-2", clientId: client.id, issuedOn: "2026-02-01", dueOn: "2026-01-16" }).run()).rejects.toThrow(); // due before issue
+    await db.insert(s.payments).values({ invoiceId: inv.id, receivedOn: "2026-01-10", amountCents: 500, method: "venmo" }).run();
+    await expect(db.delete(s.invoices).where(eq(s.invoices.id, inv.id)).run()).rejects.toThrow(); // has payments
   });
 });

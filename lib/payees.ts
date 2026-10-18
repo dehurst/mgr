@@ -66,13 +66,13 @@ export function parsePayeeForm(
   };
 }
 
-export function getPayee(db: Db, id: number): Payee | undefined {
-  return db.select().from(payees).where(eq(payees.id, id)).get();
+export async function getPayee(db: Db, id: number): Promise<Payee | undefined> {
+  return await db.select().from(payees).where(eq(payees.id, id)).get();
 }
 
 /** Every payee with this year's 1099 numbers (archived ones included; the page filters). */
-export function listPayeesWithTotals(db: Db, year: number) {
-  const { rows, payees: all } = loadPayeePayments(db, { from: `${year}-01-01`, to: `${year}-12-31` });
+export async function listPayeesWithTotals(db: Db, year: number) {
+  const { rows, payees: all } = await loadPayeePayments(db, { from: `${year}-01-01`, to: `${year}-12-31` });
   const byId = new Map(form1099Rows(all, rows, year).map((r) => [r.payee.id, r]));
   return all
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -80,8 +80,8 @@ export function listPayeesWithTotals(db: Db, year: number) {
 }
 
 /** Active payees plus (when editing) the expense's current one, for the expense form. */
-export function payeeOptions(db: Db, includeId?: number | null) {
-  return db
+export async function payeeOptions(db: Db, includeId?: number | null) {
+  return await db
     .select({ id: payees.id, name: payees.name })
     .from(payees)
     .where(includeId ? or(isNull(payees.archivedAt), eq(payees.id, includeId)) : isNull(payees.archivedAt))
@@ -90,9 +90,9 @@ export function payeeOptions(db: Db, includeId?: number | null) {
 }
 
 /** A payee can be deleted only if no expense points at it; otherwise archive. */
-export function deletePayee(db: Db, id: number): { ok: true } | { ok: false; error: string } {
-  if (db.select({ id: expenses.id }).from(expenses).where(eq(expenses.payeeId, id)).get())
+export async function deletePayee(db: Db, id: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (await db.select({ id: expenses.id }).from(expenses).where(eq(expenses.payeeId, id)).get())
     return { ok: false, error: "This payee has payments recorded. Archive it instead." };
-  db.delete(payees).where(eq(payees.id, id)).run();
+  await db.delete(payees).where(eq(payees.id, id)).run();
   return { ok: true };
 }

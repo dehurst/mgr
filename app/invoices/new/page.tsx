@@ -11,9 +11,9 @@ import { getSettings } from "@/lib/settings";
 import { InvoiceForm } from "../invoice-form";
 
 export default async function NewInvoicePage({ searchParams }: PageProps<"/invoices/new">) {
-  const db = getDb();
-  const settings = getSettings();
-  const options = db
+  const db = await getDb();
+  const settings = await getSettings();
+  const options = await db
     .select({ id: clients.id, name: clients.name, defaultRateCents: clients.defaultRateCents })
     .from(clients)
     .where(isNull(clients.archivedAt))
@@ -50,7 +50,7 @@ export default async function NewInvoicePage({ searchParams }: PageProps<"/invoi
         defaultTermsDays={settings.defaultTermsDays}
         initial={{
           clientId: preselected ? String(preselected.id) : "",
-          number: suggestInvoiceNumber(db),
+          number: await suggestInvoiceNumber(db),
           issuedOn,
           dueOn: addDays(issuedOn, settings.defaultTermsDays),
           notes: "",

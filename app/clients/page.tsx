@@ -9,7 +9,7 @@ import { formatCents } from "@/lib/money";
 
 export default async function ClientsPage({ searchParams }: PageProps<"/clients">) {
   const showArchived = (await searchParams).archived === "1";
-  const all = listClientsWithTotals(getDb(), today());
+  const all = await listClientsWithTotals(await getDb(), today());
   const rows = all.filter((c) => showArchived || !c.archivedAt);
   const archivedCount = all.filter((c) => c.archivedAt).length;
 

@@ -55,23 +55,23 @@ export function totalsFor(summaries: InvoiceSummary[]): ClientTotals {
   return t;
 }
 
-export function listClientsWithTotals(db: Db, today: DateStr) {
-  const all = db.select().from(clients).orderBy(asc(clients.name)).all();
-  const summaries = listInvoiceSummaries(db, today);
+export async function listClientsWithTotals(db: Db, today: DateStr) {
+  const all = await db.select().from(clients).orderBy(asc(clients.name)).all();
+  const summaries = await listInvoiceSummaries(db, today);
   return all.map((c) => ({ ...c, totals: totalsFor(summaries.filter((s) => s.clientId === c.id)) }));
 }
 
 /** A client can be deleted only if nothing references it; otherwise archive. */
-export function deleteClient(db: Db, id: number): { ok: true } | { ok: false; error: string } {
+export async function deleteClient(db: Db, id: number): Promise<{ ok: true } | { ok: false; error: string }> {
   const used =
-    db.select({ id: invoices.id }).from(invoices).where(eq(invoices.clientId, id)).get() ||
-    db.select({ id: expenses.id }).from(expenses).where(eq(expenses.clientId, id)).get() ||
-    db.select({ id: otherIncome.id }).from(otherIncome).where(eq(otherIncome.clientId, id)).get();
+    (await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.clientId, id)).get()) ||
+    (await db.select({ id: expenses.id }).from(expenses).where(eq(expenses.clientId, id)).get()) ||
+    (await db.select({ id: otherIncome.id }).from(otherIncome).where(eq(otherIncome.clientId, id)).get());
   if (used) return { ok: false, error: "This client has invoices or linked records. Archive it instead." };
-  db.delete(clients).where(eq(clients.id, id)).run();
+  await db.delete(clients).where(eq(clients.id, id)).run();
   return { ok: true };
 }
 
-export function getClient(db: Db, id: number): Client | undefined {
-  return db.select().from(clients).where(eq(clients.id, id)).get();
+export async function getClient(db: Db, id: number): Promise<Client | undefined> {
+  return await db.select().from(clients).where(eq(clients.id, id)).get();
 }

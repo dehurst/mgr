@@ -11,7 +11,7 @@ import { listPayeesWithTotals } from "@/lib/payees";
 export default async function PayeesPage({ searchParams }: PageProps<"/payees">) {
   const showArchived = (await searchParams).archived === "1";
   const year = Number(today().slice(0, 4));
-  const all = listPayeesWithTotals(getDb(), year);
+  const all = await listPayeesWithTotals(await getDb(), year);
   const rows = all.filter((r) => showArchived || !r.payee.archivedAt);
   const archivedCount = all.filter((r) => r.payee.archivedAt).length;
 

@@ -19,19 +19,19 @@ export async function saveClient(id: number | null, _prev: ActionState, fd: Form
   });
   if (!parsed.ok) return { ok: false, errors: parsed.errors, message: "Please fix the highlighted fields." };
 
-  const db = getDb();
+  const db = await getDb();
   let clientId = id;
   if (id) {
-    db.update(clients).set(parsed.input).where(eq(clients.id, id)).run();
+    await db.update(clients).set(parsed.input).where(eq(clients.id, id)).run();
   } else {
-    clientId = db.insert(clients).values(parsed.input).returning({ id: clients.id }).get().id;
+    clientId = (await db.insert(clients).values(parsed.input).returning({ id: clients.id }).get()).id;
   }
   revalidatePath("/", "layout");
   redirect(`/clients/${clientId}`);
 }
 
 export async function setClientArchived(id: number, archived: boolean): Promise<void> {
-  getDb()
+  await (await getDb())
     .update(clients)
     .set({ archivedAt: archived ? new Date().toISOString() : null })
     .where(eq(clients.id, id))
@@ -40,7 +40,7 @@ export async function setClientArchived(id: number, archived: boolean): Promise<
 }
 
 export async function removeClient(id: number): Promise<string | void> {
-  const r = deleteClient(getDb(), id);
+  const r = await deleteClient(await getDb(), id);
   if (!r.ok) return r.error;
   revalidatePath("/", "layout");
   redirect("/clients");

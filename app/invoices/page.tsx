@@ -23,9 +23,9 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/invoice
   const from = isValidDate(one("from")) ? one("from") : "";
   const to = isValidDate(one("to")) ? one("to") : "";
 
-  const db = getDb();
-  const clientOptions = db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(asc(clients.name)).all();
-  const base = listInvoiceSummaries(db, today(), { clientId }).filter(
+  const db = await getDb();
+  const clientOptions = await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(asc(clients.name)).all();
+  const base = (await listInvoiceSummaries(db, today(), { clientId })).filter(
     (r) => (!from || r.issuedOn >= from) && (!to || r.issuedOn <= to),
   );
   const rows = base.filter((r) => !status || (status === "open" ? OPEN.includes(r.status) : r.status === status));

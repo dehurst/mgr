@@ -13,10 +13,10 @@ export default async function NewExpensePage({ searchParams }: PageProps<"/expen
   const date = typeof sp.date === "string" && isValidDate(sp.date) ? sp.date : today();
   const method =
     typeof sp.method === "string" && (EXPENSE_PAYMENT_METHODS as readonly string[]).includes(sp.method) ? sp.method : "business_card";
-  const db = getDb();
+  const db = await getDb();
   // ?payee=ID comes from "Record a payment" on a payee's page: pre-fill a contract labor expense.
-  const payee = typeof sp.payee === "string" ? getPayee(db, Number(sp.payee)) : undefined;
-  const categories = categoryOptions(db);
+  const payee = typeof sp.payee === "string" ? await getPayee(db, Number(sp.payee)) : undefined;
+  const categories = await categoryOptions(db);
   const contractLabor = payee ? categories.find((c) => c.scheduleCLine === "11") : undefined;
   return (
     <>
@@ -30,9 +30,9 @@ export default async function NewExpensePage({ searchParams }: PageProps<"/expen
         // A fresh key after each save resets the form fields.
         key={saved}
         categories={categories}
-        clients={db.select({ id: clients.id, name: clients.name }).from(clients).where(isNull(clients.archivedAt)).orderBy(asc(clients.name)).all()}
-        payees={payeeOptions(db)}
-        vendors={recentVendors(db)}
+        clients={await db.select({ id: clients.id, name: clients.name }).from(clients).where(isNull(clients.archivedAt)).orderBy(asc(clients.name)).all()}
+        payees={await payeeOptions(db)}
+        vendors={await recentVendors(db)}
         defaults={{
           paidOn: date,
           paymentMethod: payee && !sp.method ? "check" : method,

@@ -14,7 +14,7 @@ export default async function PnlPage({ searchParams }: PageProps<"/reports/pnl"
   const sp = await searchParams;
   const range = resolveRange(sp, today(), "ytd");
   const compare = sp.compare === "1";
-  const r = pnlReport(getDb(), range, compare);
+  const r = await pnlReport(await getDb(), range, compare);
   const p = r.prior;
 
   return (
@@ -22,7 +22,7 @@ export default async function PnlPage({ searchParams }: PageProps<"/reports/pnl"
       <ReportHeader
         title="Profit & Loss"
         period={`${formatDate(range.from)} – ${formatDate(range.to)} · cash basis${r.priorRange ? ` · compared with ${formatDate(r.priorRange.from)} – ${formatDate(r.priorRange.to)}` : ""}`}
-        businessName={getSettings().businessName}
+        businessName={(await getSettings()).businessName}
         csvHref={`/reports/csv?report=pnl&${rangeQuery(range)}${compare ? "&compare=1" : ""}`}
       />
       <Card>

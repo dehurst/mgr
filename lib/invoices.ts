@@ -73,32 +73,32 @@ export function parseInvoiceForm(raw: {
   };
 }
 
-function getSettingsRow(db: Conn) {
-  return db.select().from(businessSettings).where(eq(businessSettings.id, 1)).get()!;
+async function getSettingsRow(db: Conn) {
+  return (await db.select().from(businessSettings).where(eq(businessSettings.id, 1)).get())!;
 }
 
-function numberExists(db: Conn, number: string, exceptId?: number): boolean {
-  const row = db.select({ id: invoices.id }).from(invoices).where(eq(invoices.number, number)).get();
+async function numberExists(db: Conn, number: string, exceptId?: number): Promise<boolean> {
+  const row = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.number, number)).get();
   return !!row && row.id !== exceptId;
 }
 
 /** Next unused number from settings, skipping any already taken (e.g. entered by hand). */
-export function suggestInvoiceNumber(db: Db): string {
-  const s = getSettingsRow(db);
+export async function suggestInvoiceNumber(db: Db): Promise<string> {
+  const s = await getSettingsRow(db);
   let n = s.nextInvoiceNumber;
-  while (numberExists(db, `${s.invoicePrefix}${n}`)) n++;
+  while (await numberExists(db, `${s.invoicePrefix}${n}`)) n++;
   return `${s.invoicePrefix}${n}`;
 }
 
 /** If `number` is prefix + an integer at or past the counter, move the counter past it. */
-function advanceCounter(db: Conn, number: string) {
-  const s = getSettingsRow(db);
+async function advanceCounter(db: Conn, number: string): Promise<void> {
+  const s = await getSettingsRow(db);
   if (!number.startsWith(s.invoicePrefix)) return;
   const rest = number.slice(s.invoicePrefix.length);
   if (!/^\d+$/.test(rest)) return;
   const n = Number(rest);
   if (n >= s.nextInvoiceNumber) {
-    db.update(businessSettings).set({ nextInvoiceNumber: n + 1 }).where(eq(businessSettings.id, 1)).run();
+    await db.update(businessSettings).set({ nextInvoiceNumber: n + 1 }).where(eq(businessSettings.id, 1)).run();
   }
 }
 
@@ -115,12 +115,12 @@ function lineRows(invoiceId: number, lines: ParsedLine[]) {
 
 export type SaveResult = { ok: true; id: number } | { ok: false; errors: FieldErrors };
 
-export function createInvoice(db: Db, input: InvoiceInput): SaveResult {
-  return db.transaction((tx): SaveResult => {
-    if (numberExists(tx, input.number)) return { ok: false, errors: { number: `${input.number} is already used.` } };
-    if (!tx.select({ id: clients.id }).from(clients).where(eq(clients.id, input.clientId)).get())
+export function createInvoice(db: Db, input: InvoiceInput): Promise<SaveResult> {
+  return db.transaction(async (tx): Promise<SaveResult> => {
+    if (await numberExists(tx, input.number)) return { ok: false, errors: { number: `${input.number} is already used.` } };
+    if (!await tx.select({ id: clients.id }).from(clients).where(eq(clients.id, input.clientId)).get())
       return { ok: false, errors: { clientId: "That client no longer exists." } };
-    const inv = tx
+    const inv = await tx
       .insert(invoices)
       .values({
         number: input.number,
@@ -131,26 +131,26 @@ export function createInvoice(db: Db, input: InvoiceInput): SaveResult {
       })
       .returning({ id: invoices.id })
       .get();
-    tx.insert(invoiceLineItems).values(lineRows(inv.id, input.lines)).run();
-    advanceCounter(tx, input.number);
+    await tx.insert(invoiceLineItems).values(lineRows(inv.id, input.lines)).run();
+    await advanceCounter(tx, input.number);
     return { ok: true, id: inv.id };
   });
 }
 
-export function updateInvoice(db: Db, id: number, input: InvoiceInput): SaveResult {
-  return db.transaction((tx): SaveResult => {
-    const existing = tx.select().from(invoices).where(eq(invoices.id, id)).get();
+export function updateInvoice(db: Db, id: number, input: InvoiceInput): Promise<SaveResult> {
+  return db.transaction(async (tx): Promise<SaveResult> => {
+    const existing = await tx.select().from(invoices).where(eq(invoices.id, id)).get();
     if (!existing) return { ok: false, errors: { form: "Invoice not found." } };
     if (existing.voidedAt) return { ok: false, errors: { form: "Voided invoices can't be edited." } };
-    if (numberExists(tx, input.number, id)) return { ok: false, errors: { number: `${input.number} is already used.` } };
+    if (await numberExists(tx, input.number, id)) return { ok: false, errors: { number: `${input.number} is already used.` } };
     const newTotal = input.lines.reduce((s, l) => s + lineAmountCents(l.quantityMilli, l.unitPriceCents), 0);
-    const paid = paidCents(tx, id);
+    const paid = await paidCents(tx, id);
     if (newTotal < paid)
       return {
         ok: false,
         errors: { lines: `The new total is less than the ${(paid / 100).toFixed(2)} already paid. Void a payment first.` },
       };
-    tx.update(invoices)
+    await tx.update(invoices)
       .set({
         number: input.number,
         clientId: input.clientId,
@@ -160,15 +160,15 @@ export function updateInvoice(db: Db, id: number, input: InvoiceInput): SaveResu
       })
       .where(eq(invoices.id, id))
       .run();
-    tx.delete(invoiceLineItems).where(eq(invoiceLineItems.invoiceId, id)).run();
-    tx.insert(invoiceLineItems).values(lineRows(id, input.lines)).run();
-    advanceCounter(tx, input.number);
+    await tx.delete(invoiceLineItems).where(eq(invoiceLineItems.invoiceId, id)).run();
+    await tx.insert(invoiceLineItems).values(lineRows(id, input.lines)).run();
+    await advanceCounter(tx, input.number);
     return { ok: true, id };
   });
 }
 
-function paidCents(db: Conn, invoiceId: number): number {
-  const row = db
+async function paidCents(db: Conn, invoiceId: number): Promise<number> {
+  const row = await db
     .select({ total: sql<number>`coalesce(sum(${payments.amountCents}), 0)` })
     .from(payments)
     .where(and(eq(payments.invoiceId, invoiceId), isNull(payments.voidedAt)))
@@ -177,13 +177,13 @@ function paidCents(db: Conn, invoiceId: number): number {
 }
 
 /** Copy client, lines, and notes into a new draft dated `today`. */
-export function duplicateInvoice(db: Db, id: number, today: DateStr): SaveResult {
-  const src = getInvoiceDetail(db, id);
+export async function duplicateInvoice(db: Db, id: number, today: DateStr): Promise<SaveResult> {
+  const src = await getInvoiceDetail(db, id);
   if (!src) return { ok: false, errors: { form: "Invoice not found." } };
   const terms = Math.max(0, daysBetween(src.invoice.issuedOn, src.invoice.dueOn));
   return createInvoice(db, {
     clientId: src.invoice.clientId,
-    number: suggestInvoiceNumber(db),
+    number: await suggestInvoiceNumber(db),
     issuedOn: today,
     dueOn: addDays(today, terms),
     notes: src.invoice.notes,
@@ -201,27 +201,27 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
  * Permanently delete an invoice, its lines, and any payments recorded on it. Owner's choice:
  * use voidInvoice() to keep the record. Deleting a paid invoice removes that income from reports.
  */
-export function deleteInvoice(db: Db, id: number): ActionResult {
-  return db.transaction((tx): ActionResult => {
-    const inv = tx.select({ id: invoices.id }).from(invoices).where(eq(invoices.id, id)).get();
+export function deleteInvoice(db: Db, id: number): Promise<ActionResult> {
+  return db.transaction(async (tx): Promise<ActionResult> => {
+    const inv = await tx.select({ id: invoices.id }).from(invoices).where(eq(invoices.id, id)).get();
     if (!inv) return { ok: false, error: "Invoice not found." };
-    tx.delete(payments).where(eq(payments.invoiceId, id)).run();
-    tx.delete(invoices).where(eq(invoices.id, id)).run(); // line items cascade
+    await tx.delete(payments).where(eq(payments.invoiceId, id)).run();
+    await tx.delete(invoices).where(eq(invoices.id, id)).run(); // line items cascade
     return { ok: true };
   });
 }
 
-export function voidInvoice(db: Db, id: number, reason: string, now = new Date()): ActionResult {
-  const inv = db.select().from(invoices).where(eq(invoices.id, id)).get();
+export async function voidInvoice(db: Db, id: number, reason: string, now = new Date()): Promise<ActionResult> {
+  const inv = await db.select().from(invoices).where(eq(invoices.id, id)).get();
   if (!inv) return { ok: false, error: "Invoice not found." };
   if (inv.voidedAt) return { ok: true };
-  if (paidCents(db, id) > 0) return { ok: false, error: "Void its payments first; money you received still counts as income." };
-  db.update(invoices).set({ voidedAt: now.toISOString(), voidReason: reason }).where(eq(invoices.id, id)).run();
+  if ((await paidCents(db, id)) > 0) return { ok: false, error: "Void its payments first; money you received still counts as income." };
+  await db.update(invoices).set({ voidedAt: now.toISOString(), voidReason: reason }).where(eq(invoices.id, id)).run();
   return { ok: true };
 }
 
-export function unvoidInvoice(db: Db, id: number): ActionResult {
-  db.update(invoices).set({ voidedAt: null, voidReason: "" }).where(eq(invoices.id, id)).run();
+export async function unvoidInvoice(db: Db, id: number): Promise<ActionResult> {
+  await db.update(invoices).set({ voidedAt: null, voidReason: "" }).where(eq(invoices.id, id)).run();
   return { ok: true };
 }
 
@@ -240,8 +240,8 @@ export type InvoiceSummary = {
   status: InvoiceStatus;
 };
 
-export function listInvoiceSummaries(db: Db, today: DateStr, opts: { clientId?: number } = {}): InvoiceSummary[] {
-  const rows = db
+export async function listInvoiceSummaries(db: Db, today: DateStr, opts: { clientId?: number } = {}): Promise<InvoiceSummary[]> {
+  const rows = await db
     .select({
       id: invoices.id,
       number: invoices.number,
@@ -262,17 +262,17 @@ export function listInvoiceSummaries(db: Db, today: DateStr, opts: { clientId?: 
   return rows.map((r) => ({ ...r, status: deriveStatus(r, today), balanceCents: balanceCents(r) }));
 }
 
-export function getInvoiceDetail(db: Db, id: number) {
-  const invoice = db.select().from(invoices).where(eq(invoices.id, id)).get();
+export async function getInvoiceDetail(db: Db, id: number) {
+  const invoice = await db.select().from(invoices).where(eq(invoices.id, id)).get();
   if (!invoice) return null;
-  const client = db.select().from(clients).where(eq(clients.id, invoice.clientId)).get()!;
-  const lines = db
+  const client = (await db.select().from(clients).where(eq(clients.id, invoice.clientId)).get())!;
+  const lines = await db
     .select()
     .from(invoiceLineItems)
     .where(eq(invoiceLineItems.invoiceId, id))
     .orderBy(asc(invoiceLineItems.sortOrder), asc(invoiceLineItems.id))
     .all();
-  const pays = db
+  const pays = await db
     .select()
     .from(payments)
     .where(eq(payments.invoiceId, id))
@@ -283,4 +283,4 @@ export function getInvoiceDetail(db: Db, id: number) {
   return { invoice, client, lines, payments: pays, totalCents, paidCents: paid };
 }
 
-export type InvoiceDetail = NonNullable<ReturnType<typeof getInvoiceDetail>>;
+export type InvoiceDetail = NonNullable<Awaited<ReturnType<typeof getInvoiceDetail>>>;

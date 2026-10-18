@@ -15,10 +15,10 @@ import { taxSummary } from "./tax";
 
 const $ = centsToInput;
 
-export function pnlReport(db: Db, range: DateRange, compare: boolean) {
-  const current = computePnl(loadIncome(db, range), loadExpenses(db, range));
+export async function pnlReport(db: Db, range: DateRange, compare: boolean) {
+  const current = computePnl(await loadIncome(db, range), await loadExpenses(db, range));
   const priorR = compare ? priorRange(range) : null;
-  const prior = priorR ? computePnl(loadIncome(db, priorR), loadExpenses(db, priorR)) : null;
+  const prior = priorR ? computePnl(await loadIncome(db, priorR), await loadExpenses(db, priorR)) : null;
   // Union of categories across both periods, ordered by current amount then prior.
   const cats = new Map<number, string>();
   for (const c of current.expensesByCategory) cats.set(c.categoryId, c.name);
@@ -28,7 +28,7 @@ export function pnlReport(db: Db, range: DateRange, compare: boolean) {
   return { range, current, prior, priorRange: priorR, categories };
 }
 
-export function pnlCsv(r: ReturnType<typeof pnlReport>): Cell[][] {
+export function pnlCsv(r: Awaited<ReturnType<typeof pnlReport>>): Cell[][] {
   const head = r.prior ? ["", "Current", "Prior", "Change"] : ["", "Amount"];
   const row = (label: string, cur: number, pri?: number): Cell[] =>
     r.prior ? [label, $(cur), $(pri ?? 0), $(cur - (pri ?? 0))] : [label, $(cur)];
@@ -52,12 +52,12 @@ export function pnlCsv(r: ReturnType<typeof pnlReport>): Cell[][] {
   ];
 }
 
-export function expensesReportData(db: Db, range: DateRange) {
-  const rows = loadExpenses(db, range);
+export async function expensesReportData(db: Db, range: DateRange) {
+  const rows = await loadExpenses(db, range);
   return { range, rows, ...expenseReport(rows) };
 }
 
-export function expensesCsv(r: ReturnType<typeof expensesReportData>): Cell[][] {
+export function expensesCsv(r: Awaited<ReturnType<typeof expensesReportData>>): Cell[][] {
   return [
     [`Expense report, ${formatDate(r.range.from)} – ${formatDate(r.range.to)}`],
     [],
@@ -81,13 +81,13 @@ export function expensesCsv(r: ReturnType<typeof expensesReportData>): Cell[][] 
   ];
 }
 
-export function form1099Report(db: Db, year: number) {
+export async function form1099Report(db: Db, year: number) {
   const range = { from: `${year}-01-01`, to: `${year}-12-31` };
-  const { rows, payees } = loadPayeePayments(db, range);
+  const { rows, payees } = await loadPayeePayments(db, range);
   return { year, range, threshold: threshold1099(year), rows: form1099Rows(payees, rows, year) };
 }
 
-export function form1099Csv(r: ReturnType<typeof form1099Report>): Cell[][] {
+export function form1099Csv(r: Awaited<ReturnType<typeof form1099Report>>): Cell[][] {
   return [
     [`1099-NEC summary, tax year ${r.year} (threshold ${$(r.threshold.cents)})`],
     [],
@@ -105,11 +105,11 @@ export function form1099Csv(r: ReturnType<typeof form1099Report>): Cell[][] {
   ];
 }
 
-export function agingReport(db: Db, asOf: DateStr) {
-  return { asOf, ...computeAging(listInvoiceSummaries(db, asOf), asOf) };
+export async function agingReport(db: Db, asOf: DateStr) {
+  return { asOf, ...computeAging(await listInvoiceSummaries(db, asOf), asOf) };
 }
 
-export function agingCsv(r: ReturnType<typeof agingReport>): Cell[][] {
+export function agingCsv(r: Awaited<ReturnType<typeof agingReport>>): Cell[][] {
   return [
     [`Accounts receivable aging as of ${formatDate(r.asOf)}`],
     [],
@@ -121,11 +121,11 @@ export function agingCsv(r: ReturnType<typeof agingReport>): Cell[][] {
   ];
 }
 
-export function incomeByClientReport(db: Db, range: DateRange) {
-  return { range, ...incomeByClient(loadIncome(db, range)) };
+export async function incomeByClientReport(db: Db, range: DateRange) {
+  return { range, ...incomeByClient(await loadIncome(db, range)) };
 }
 
-export function incomeByClientCsv(r: ReturnType<typeof incomeByClientReport>): Cell[][] {
+export function incomeByClientCsv(r: Awaited<ReturnType<typeof incomeByClientReport>>): Cell[][] {
   return [
     [`Income by client (cash basis), ${formatDate(r.range.from)} – ${formatDate(r.range.to)}`],
     [],
@@ -135,12 +135,12 @@ export function incomeByClientCsv(r: ReturnType<typeof incomeByClientReport>): C
   ];
 }
 
-export function taxReport(db: Db, year: number) {
+export async function taxReport(db: Db, year: number) {
   const range = { from: `${year}-01-01`, to: `${year}-12-31` };
-  return { year, range, ...taxSummary(loadIncome(db, range), loadExpenses(db, range)) };
+  return { year, range, ...taxSummary(await loadIncome(db, range), await loadExpenses(db, range)) };
 }
 
-export function taxCsv(r: ReturnType<typeof taxReport>): Cell[][] {
+export function taxCsv(r: Awaited<ReturnType<typeof taxReport>>): Cell[][] {
   return [
     [`Schedule C summary (cash basis), tax year ${r.year}`],
     [],

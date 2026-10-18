@@ -4,11 +4,16 @@ import "./env";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
-import { databasePath, openDb } from "../db";
+import { databaseUrl, isLocalUrl, openDb } from "../db";
 import { wipeData } from "../db/wipe";
 
 async function main(): Promise<number> {
-  const file = databasePath();
+  const { url } = databaseUrl();
+  if (!isLocalUrl(url)) {
+    console.error("db:wipe only works on a local database file. Use the Turso dashboard for the cloud database.");
+    return 1;
+  }
+  const file = url.slice("file:".length);
   if (!fs.existsSync(file)) {
     console.error(`No database at ${file}. Nothing to wipe.`);
     return 1;
@@ -23,14 +28,21 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const db = openDb(file);
+  const db = await openDb(file);
   const copy = `${file}.before-wipe-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-  await db.$client.backup(copy);
-  wipeData(db);
+  // VACUUM INTO writes a consistent copy even while the app has the database open.
+  await db.$client.execute({ sql: "VACUUM INTO ?", args: [copy] });
+  await wipeData(db);
   db.$client.close();
   console.log(`\nWiped. A copy of what was there is saved at:\n  ${copy}`);
   console.log("Receipts and your logo in the uploads folder were left alone.");
   return 0;
 }
 
-main().then((code) => process.exit(code));
+main().then(
+  (code) => process.exit(code),
+  (e) => {
+    console.error(e);
+    process.exit(1);
+  },
+);

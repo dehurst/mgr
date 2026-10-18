@@ -6,10 +6,10 @@ import { invoicePdfFilename, renderInvoicePdf } from "./invoice-pdf";
 
 describe("invoice PDF", () => {
   it("renders a valid PDF for a multi-line invoice", async () => {
-    const db = openDb(":memory:");
-    const settings = db.update(businessSettings).set({ businessName: "Test Co", paymentInstructions: "Check" }).returning().get();
-    const clientId = db.insert(clients).values({ name: "Acme", billingAddress: "1 Main St" }).returning().get().id;
-    const r = createInvoice(db, {
+    const db = await openDb(":memory:");
+    const settings = await db.update(businessSettings).set({ businessName: "Test Co", paymentInstructions: "Check" }).returning().get();
+    const clientId = (await db.insert(clients).values({ name: "Acme", billingAddress: "1 Main St" }).returning().get()).id;
+    const r = await createInvoice(db, {
       clientId,
       number: "INV-1001",
       issuedOn: "2026-01-02",
@@ -18,13 +18,13 @@ describe("invoice PDF", () => {
       lines: Array.from({ length: 40 }, (_, i) => ({ description: `Task ${i}`, quantityMilli: 1500, unitPriceCents: 8533 })),
     });
     if (!r.ok) throw new Error("create failed");
-    db.update(invoices).set({ voidedAt: "2026-01-03T00:00:00Z" }).run();
-    const buf = await renderInvoicePdf({ detail: getInvoiceDetail(db, r.id)!, settings, logoAbsPath: null });
+    await db.update(invoices).set({ voidedAt: "2026-01-03T00:00:00Z" }).run();
+    const buf = await renderInvoicePdf({ detail: (await getInvoiceDetail(db, r.id))!, settings, logoAbsPath: null });
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(buf.length).toBeGreaterThan(2000);
   });
 
-  it("builds a safe filename", () => {
+  it("builds a safe filename", async () => {
     expect(invoicePdfFilename("INV-1001", "DEHurst Enterprises, LLC")).toBe("INV-1001 - DEHurst Enterprises LLC.pdf");
     expect(invoicePdfFilename("INV/../1", "")).toBe("INV..1.pdf");
   });
@@ -33,9 +33,9 @@ describe("invoice PDF", () => {
 describe("1099-NEC recipient copy", () => {
   it("renders a valid PDF", async () => {
     const { render1099Pdf, form1099Filename } = await import("./form-1099-pdf");
-    const db = openDb(":memory:");
-    const settings = db.update(businessSettings).set({ businessName: "Test Co", taxId: "12-3456789" }).returning().get();
-    const payee = db.insert(payees).values({ name: "Jane Smith", address: "1 Main St", tinType: "ssn", tinLast4: "6789" }).returning().get();
+    const db = await openDb(":memory:");
+    const settings = await db.update(businessSettings).set({ businessName: "Test Co", taxId: "12-3456789" }).returning().get();
+    const payee = await db.insert(payees).values({ name: "Jane Smith", address: "1 Main St", tinType: "ssn", tinLast4: "6789" }).returning().get();
     const buf = await render1099Pdf({ year: 2026, payee, amountCents: 2_500_00, settings });
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(form1099Filename(2026, "Jane O'Smith")).toBe("1099-NEC 2026 - Jane OSmith.pdf");

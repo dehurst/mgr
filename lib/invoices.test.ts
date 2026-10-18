@@ -19,10 +19,10 @@ import {
 let db: Db;
 let clientId: number;
 
-function input(over: Partial<InvoiceInput> = {}): InvoiceInput {
+async function input(over: Partial<InvoiceInput> = {}): Promise<InvoiceInput> {
   return {
     clientId,
-    number: suggestInvoiceNumber(db),
+    number: await suggestInvoiceNumber(db),
     issuedOn: "2026-01-02",
     dueOn: "2026-01-17",
     notes: "",
@@ -31,15 +31,15 @@ function input(over: Partial<InvoiceInput> = {}): InvoiceInput {
   };
 }
 
-function create(over: Partial<InvoiceInput> = {}): number {
-  const r = createInvoice(db, input(over));
+async function create(over: Partial<InvoiceInput> = {}): Promise<number> {
+  const r = await createInvoice(db, await input(over));
   if (!r.ok) throw new Error(JSON.stringify(r.errors));
   return r.id;
 }
 
-beforeEach(() => {
-  db = openDb(":memory:");
-  clientId = db.insert(clients).values({ name: "Acme" }).returning().get().id;
+beforeEach(async () => {
+  db = await openDb(":memory:");
+  clientId = (await db.insert(clients).values({ name: "Acme" }).returning().get()).id;
 });
 
 describe("parseInvoiceForm", () => {
@@ -55,7 +55,7 @@ describe("parseInvoiceForm", () => {
     ]),
   };
 
-  it("parses hours and rate into integers and skips blank rows", () => {
+  it("parses hours and rate into integers and skips blank rows", async () => {
     const r = parseInvoiceForm(raw);
     expect(r.ok && r.input.lines).toEqual([{ description: "Dev", quantityMilli: 1500, unitPriceCents: 8533 }]);
   });
@@ -70,7 +70,7 @@ describe("parseInvoiceForm", () => {
     [{ linesJson: JSON.stringify([{ description: "x", hours: "1", rate: "-5" }]) }, "lines"],
     [{ linesJson: JSON.stringify([{ description: "", hours: "1", rate: "5" }]) }, "lines"],
     [{ linesJson: "not json" }, "lines"],
-  ])("rejects %j", (over, field) => {
+  ])("rejects %j", async (over, field) => {
     const r = parseInvoiceForm({ ...raw, ...over });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors[field]).toBeTruthy();
@@ -78,79 +78,79 @@ describe("parseInvoiceForm", () => {
 });
 
 describe("numbering", () => {
-  it("assigns from settings and advances the counter", () => {
-    expect(suggestInvoiceNumber(db)).toBe("INV-1001");
-    create();
-    expect(suggestInvoiceNumber(db)).toBe("INV-1002");
+  it("assigns from settings and advances the counter", async () => {
+    expect(await suggestInvoiceNumber(db)).toBe("INV-1001");
+    await create();
+    expect(await suggestInvoiceNumber(db)).toBe("INV-1002");
   });
 
-  it("rejects duplicate numbers", () => {
-    create({ number: "INV-1001" });
-    const r = createInvoice(db, input({ number: "INV-1001" }));
+  it("rejects duplicate numbers", async () => {
+    await create({ number: "INV-1001" });
+    const r = await createInvoice(db, await input({ number: "INV-1001" }));
     expect(r.ok).toBe(false);
   });
 
-  it("a hand-entered higher number moves the counter past it", () => {
-    create({ number: "INV-1050" });
-    expect(suggestInvoiceNumber(db)).toBe("INV-1051");
+  it("a hand-entered higher number moves the counter past it", async () => {
+    await create({ number: "INV-1050" });
+    expect(await suggestInvoiceNumber(db)).toBe("INV-1051");
   });
 
-  it("a hand-entered old QBO number doesn't move the counter back", () => {
-    db.update(businessSettings).set({ nextInvoiceNumber: 1042 }).where(eq(businessSettings.id, 1)).run();
-    create({ number: "INV-1030" });
-    expect(suggestInvoiceNumber(db)).toBe("INV-1042");
+  it("a hand-entered old QBO number doesn't move the counter back", async () => {
+    await db.update(businessSettings).set({ nextInvoiceNumber: 1042 }).where(eq(businessSettings.id, 1)).run();
+    await create({ number: "INV-1030" });
+    expect(await suggestInvoiceNumber(db)).toBe("INV-1042");
   });
 
-  it("skips numbers that already exist", () => {
-    create({ number: "INV-1001-old" });
-    db.insert(invoices).values({ number: "INV-1001", clientId, issuedOn: "2026-01-01", dueOn: "2026-01-01" }).run();
-    expect(suggestInvoiceNumber(db)).toBe("INV-1002");
+  it("skips numbers that already exist", async () => {
+    await create({ number: "INV-1001-old" });
+    await db.insert(invoices).values({ number: "INV-1001", clientId, issuedOn: "2026-01-01", dueOn: "2026-01-01" }).run();
+    expect(await suggestInvoiceNumber(db)).toBe("INV-1002");
   });
 
-  it("deleted drafts leave gaps (numbers are not reused)", () => {
-    const id = create();
-    expect(deleteInvoice(db, id).ok).toBe(true);
-    expect(suggestInvoiceNumber(db)).toBe("INV-1002");
+  it("deleted drafts leave gaps (numbers are not reused)", async () => {
+    const id = await create();
+    expect((await deleteInvoice(db, id)).ok).toBe(true);
+    expect(await suggestInvoiceNumber(db)).toBe("INV-1002");
   });
 });
 
 describe("totals and editing", () => {
-  it("stores rounded line amounts and totals them", () => {
-    const id = create({
+  it("stores rounded line amounts and totals them", async () => {
+    const id = await create({
       lines: [
         { description: "a", quantityMilli: 1500, unitPriceCents: 8533 },
         { description: "b", quantityMilli: 250, unitPriceCents: 8533 },
       ],
     });
-    const d = getInvoiceDetail(db, id)!;
+    const d = (await getInvoiceDetail(db, id))!;
     expect(d.lines.map((l) => l.amountCents)).toEqual([12800, 2133]);
     expect(d.totalCents).toBe(14933);
   });
 
-  it("replaces lines on update", () => {
-    const id = create();
-    const r = updateInvoice(db, id, input({ number: "INV-1001", lines: [{ description: "new", quantityMilli: 2000, unitPriceCents: 10000 }] }));
+  it("replaces lines on update", async () => {
+    const id = await create();
+    const r = await updateInvoice(db, id, await input({ number: "INV-1001", lines: [{ description: "new", quantityMilli: 2000, unitPriceCents: 10000 }] }));
     expect(r.ok).toBe(true);
-    const d = getInvoiceDetail(db, id)!;
+    const d = (await getInvoiceDetail(db, id))!;
     expect(d.lines).toHaveLength(1);
     expect(d.totalCents).toBe(20000);
   });
 
-  it("won't drop the total below what's already been paid", () => {
-    const id = create({ lines: [{ description: "a", quantityMilli: 1000, unitPriceCents: 10000 }] });
-    db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 8000, method: "check" }).run();
-    const r = updateInvoice(db, id, input({ number: "INV-1001", lines: [{ description: "a", quantityMilli: 500, unitPriceCents: 10000 }] }));
+  it("won't drop the total below what's already been paid", async () => {
+    const id = await create({ lines: [{ description: "a", quantityMilli: 1000, unitPriceCents: 10000 }] });
+    await db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 8000, method: "check" }).run();
+    const r = await updateInvoice(db, id, await input({ number: "INV-1001", lines: [{ description: "a", quantityMilli: 500, unitPriceCents: 10000 }] }));
     expect(r.ok).toBe(false);
   });
 });
 
 describe("duplicate", () => {
-  it("copies client, lines, and notes into a new draft dated today with the same terms", () => {
-    const id = create({ notes: "Thanks!", issuedOn: "2026-01-02", dueOn: "2026-01-17" });
-    db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, id)).run();
-    const r = duplicateInvoice(db, id, "2026-02-01");
+  it("copies client, lines, and notes into a new draft dated today with the same terms", async () => {
+    const id = await create({ notes: "Thanks!", issuedOn: "2026-01-02", dueOn: "2026-01-17" });
+    await db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, id)).run();
+    const r = await duplicateInvoice(db, id, "2026-02-01");
     expect(r.ok).toBe(true);
-    const d = getInvoiceDetail(db, (r as { id: number }).id)!;
+    const d = (await getInvoiceDetail(db, (r as { id: number }).id))!;
     expect(d.invoice.number).toBe("INV-1002");
     expect(d.invoice.issuedOn).toBe("2026-02-01");
     expect(d.invoice.dueOn).toBe("2026-02-16");
@@ -161,50 +161,50 @@ describe("duplicate", () => {
 });
 
 describe("delete and void rules", () => {
-  it("permanently deletes a sent invoice with its lines and payments", () => {
-    const id = create();
-    db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, id)).run();
-    db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 500, method: "check" }).run();
-    expect(deleteInvoice(db, id).ok).toBe(true);
-    expect(getInvoiceDetail(db, id)).toBeNull();
-    expect(db.select().from(payments).all()).toHaveLength(0);
-    expect(listInvoiceSummaries(db, "2026-01-10")).toHaveLength(0);
+  it("permanently deletes a sent invoice with its lines and payments", async () => {
+    const id = await create();
+    await db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, id)).run();
+    await db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 500, method: "check" }).run();
+    expect((await deleteInvoice(db, id)).ok).toBe(true);
+    expect(await getInvoiceDetail(db, id)).toBeNull();
+    expect(await db.select().from(payments).all()).toHaveLength(0);
+    expect(await listInvoiceSummaries(db, "2026-01-10")).toHaveLength(0);
   });
 
-  it("can't void an invoice with active payments, can after voiding them", () => {
-    const id = create();
-    const p = db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 500, method: "venmo" }).returning().get();
-    expect(voidInvoice(db, id, "mistake").ok).toBe(false);
-    db.update(payments).set({ voidedAt: "2026-01-06T00:00:00Z" }).where(eq(payments.id, p.id)).run();
-    expect(voidInvoice(db, id, "mistake").ok).toBe(true);
-    expect(listInvoiceSummaries(db, "2026-01-10")[0].status).toBe("void");
+  it("can't void an invoice with active payments, can after voiding them", async () => {
+    const id = await create();
+    const p = await db.insert(payments).values({ invoiceId: id, receivedOn: "2026-01-05", amountCents: 500, method: "venmo" }).returning().get();
+    expect((await voidInvoice(db, id, "mistake")).ok).toBe(false);
+    await db.update(payments).set({ voidedAt: "2026-01-06T00:00:00Z" }).where(eq(payments.id, p.id)).run();
+    expect((await voidInvoice(db, id, "mistake")).ok).toBe(true);
+    expect((await listInvoiceSummaries(db, "2026-01-10"))[0].status).toBe("void");
   });
 });
 
 describe("summaries and client totals", () => {
-  it("derives status and excludes drafts and voids from billed totals", () => {
-    const sent = create({ dueOn: "2026-01-17" });
-    db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, sent)).run();
-    db.insert(payments).values({ invoiceId: sent, receivedOn: "2026-01-05", amountCents: 2800, method: "check" }).run();
-    db.insert(payments).values({ invoiceId: sent, receivedOn: "2026-01-06", amountCents: 9999, method: "check", voidedAt: "x" }).run();
-    create(); // draft
-    const v = create();
-    voidInvoice(db, v, "dupe");
+  it("derives status and excludes drafts and voids from billed totals", async () => {
+    const sent = await create({ dueOn: "2026-01-17" });
+    await db.update(invoices).set({ sentAt: "2026-01-02T00:00:00Z" }).where(eq(invoices.id, sent)).run();
+    await db.insert(payments).values({ invoiceId: sent, receivedOn: "2026-01-05", amountCents: 2800, method: "check" }).run();
+    await db.insert(payments).values({ invoiceId: sent, receivedOn: "2026-01-06", amountCents: 9999, method: "check", voidedAt: "x" }).run();
+    await create(); // draft
+    const v = await create();
+    await voidInvoice(db, v, "dupe");
 
-    const rows = listInvoiceSummaries(db, "2026-01-20");
+    const rows = await listInvoiceSummaries(db, "2026-01-20");
     const s = rows.find((r) => r.id === sent)!;
     expect(s.paidCents).toBe(2800);
     expect(s.balanceCents).toBe(10000);
     expect(s.status).toBe("overdue");
 
-    const [acme] = listClientsWithTotals(db, "2026-01-20");
+    const [acme] = await listClientsWithTotals(db, "2026-01-20");
     expect(acme.totals).toEqual({ billedCents: 12800, paidCents: 2800, balanceCents: 10000, overdueCents: 10000, draftCount: 1 });
   });
 
-  it("clients with invoices can't be deleted; empty ones can", () => {
-    create();
-    expect(deleteClient(db, clientId).ok).toBe(false);
-    const other = db.insert(clients).values({ name: "Empty" }).returning().get().id;
-    expect(deleteClient(db, other).ok).toBe(true);
+  it("clients with invoices can't be deleted; empty ones can", async () => {
+    await create();
+    expect((await deleteClient(db, clientId)).ok).toBe(false);
+    const other = (await db.insert(clients).values({ name: "Empty" }).returning().get()).id;
+    expect((await deleteClient(db, other)).ok).toBe(true);
   });
 });

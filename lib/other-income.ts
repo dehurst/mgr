@@ -30,8 +30,8 @@ export function parseOtherIncomeForm(
 }
 
 /** Voided rows are excluded (the column exists for older records; the UI deletes instead). */
-export function listOtherIncome(db: Db, range: DateRange) {
-  const rows = db
+export async function listOtherIncome(db: Db, range: DateRange) {
+  const rows = await db
     .select({
       id: otherIncome.id,
       receivedOn: otherIncome.receivedOn,
@@ -49,6 +49,6 @@ export function listOtherIncome(db: Db, range: DateRange) {
   return { rows, totalCents: sumCents(rows.map((r) => r.amountCents)) };
 }
 
-export function getOtherIncome(db: Db, id: number) {
-  return db.select().from(otherIncome).where(eq(otherIncome.id, id)).get();
+export async function getOtherIncome(db: Db, id: number) {
+  return await db.select().from(otherIncome).where(eq(otherIncome.id, id)).get();
 }

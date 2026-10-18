@@ -10,11 +10,11 @@ import { InvoiceForm } from "../../invoice-form";
 
 export default async function EditInvoicePage({ params }: PageProps<"/invoices/[id]/edit">) {
   const id = Number((await params).id);
-  const db = getDb();
-  const d = getInvoiceDetail(db, id);
+  const db = await getDb();
+  const d = await getInvoiceDetail(db, id);
   if (!d) notFound();
   if (d.invoice.voidedAt) redirect(`/invoices/${id}`);
-  const options = db
+  const options = await db
     .select({ id: clients.id, name: clients.name, defaultRateCents: clients.defaultRateCents })
     .from(clients)
     .where(or(isNull(clients.archivedAt), eq(clients.id, d.invoice.clientId)))
@@ -30,7 +30,7 @@ export default async function EditInvoicePage({ params }: PageProps<"/invoices/[
       <InvoiceForm
         invoiceId={id}
         clients={options}
-        defaultTermsDays={getSettings().defaultTermsDays}
+        defaultTermsDays={(await getSettings()).defaultTermsDays}
         initial={{
           clientId: String(d.invoice.clientId),
           number: d.invoice.number,

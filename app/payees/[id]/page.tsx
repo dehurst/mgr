@@ -16,10 +16,10 @@ import { removePayee, setPayeeArchived } from "../actions";
 
 export default async function PayeePage({ params }: PageProps<"/payees/[id]">) {
   const id = Number((await params).id);
-  const db = getDb();
-  const payee = getPayee(db, id);
+  const db = await getDb();
+  const payee = await getPayee(db, id);
   if (!payee) notFound();
-  const { rows } = listExpenses(db, { range: { from: "0000-01-01", to: "9999-12-31" }, payeeId: id });
+  const { rows } = await listExpenses(db, { range: { from: "0000-01-01", to: "9999-12-31" }, payeeId: id });
   const paymentRows = rows.map((r) => ({ ...r, payeeId: id, date: r.paidOn }));
   // One 1099 line per calendar year with payments, newest first.
   const years = [...new Set(rows.map((r) => Number(r.paidOn.slice(0, 4))))].sort((a, b) => b - a);

@@ -14,10 +14,10 @@ import { removeClient, setClientArchived } from "../actions";
 
 export default async function ClientPage({ params }: PageProps<"/clients/[id]">) {
   const id = Number((await params).id);
-  const db = getDb();
-  const client = getClient(db, id);
+  const db = await getDb();
+  const client = await getClient(db, id);
   if (!client) notFound();
-  const invoices = listInvoiceSummaries(db, today(), { clientId: id });
+  const invoices = await listInvoiceSummaries(db, today(), { clientId: id });
   const t = totalsFor(invoices);
 
   return (

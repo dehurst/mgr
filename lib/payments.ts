@@ -48,17 +48,17 @@ export function parsePaymentForm(
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 type Conn = Db | Tx;
 
-function openBalance(db: Conn, invoiceId: number): number {
-  const total = db
+async function openBalance(db: Conn, invoiceId: number): Promise<number> {
+  const total = (await db
     .select({ v: sql<number>`coalesce(sum(${invoiceLineItems.amountCents}), 0)` })
     .from(invoiceLineItems)
     .where(eq(invoiceLineItems.invoiceId, invoiceId))
-    .get()!.v;
-  const paid = db
+    .get())!.v;
+  const paid = (await db
     .select({ v: sql<number>`coalesce(sum(${payments.amountCents}), 0)` })
     .from(payments)
     .where(and(eq(payments.invoiceId, invoiceId), isNull(payments.voidedAt)))
-    .get()!.v;
+    .get())!.v;
   return total - paid;
 }
 
@@ -68,47 +68,47 @@ export type Result = { ok: true } | { ok: false; errors: FieldErrors };
  * Record money received. Rejects overpayment. A payment on a never-sent invoice marks it sent
  * on the payment date (the client clearly received it).
  */
-export function recordPayment(db: Db, invoiceId: number, input: PaymentInput): Result {
-  return db.transaction((tx): Result => {
-    const inv = tx.select().from(invoices).where(eq(invoices.id, invoiceId)).get();
+export function recordPayment(db: Db, invoiceId: number, input: PaymentInput): Promise<Result> {
+  return db.transaction(async (tx): Promise<Result> => {
+    const inv = await tx.select().from(invoices).where(eq(invoices.id, invoiceId)).get();
     if (!inv) return { ok: false, errors: { form: "Invoice not found." } };
     if (inv.voidedAt) return { ok: false, errors: { form: "This invoice is void. Un-void it first." } };
-    const balance = openBalance(tx, invoiceId);
+    const balance = await openBalance(tx, invoiceId);
     if (balance <= 0) return { ok: false, errors: { amount: "This invoice is already paid in full." } };
     if (input.amountCents > balance)
       return { ok: false, errors: { amount: `That's more than the ${formatCents(balance)} still owed.` } };
-    tx.insert(payments).values({ invoiceId, ...input }).run();
-    if (!inv.sentAt) tx.update(invoices).set({ sentAt: sentAtFor(input.receivedOn) }).where(eq(invoices.id, invoiceId)).run();
+    await tx.insert(payments).values({ invoiceId, ...input }).run();
+    if (!inv.sentAt) await tx.update(invoices).set({ sentAt: sentAtFor(input.receivedOn) }).where(eq(invoices.id, invoiceId)).run();
     return { ok: true };
   });
 }
 
 /** Payments are never deleted: voiding keeps the record but removes it from every total. */
-export function voidPayment(db: Db, paymentId: number, now = new Date()): Result {
-  const p = db.select().from(payments).where(eq(payments.id, paymentId)).get();
+export async function voidPayment(db: Db, paymentId: number, now = new Date()): Promise<Result> {
+  const p = await db.select().from(payments).where(eq(payments.id, paymentId)).get();
   if (!p) return { ok: false, errors: { form: "Payment not found." } };
-  if (!p.voidedAt) db.update(payments).set({ voidedAt: now.toISOString() }).where(eq(payments.id, paymentId)).run();
+  if (!p.voidedAt) await db.update(payments).set({ voidedAt: now.toISOString() }).where(eq(payments.id, paymentId)).run();
   return { ok: true };
 }
 
-export function markSent(db: Db, invoiceId: number, date: string, today: DateStr): Result {
+export async function markSent(db: Db, invoiceId: number, date: string, today: DateStr): Promise<Result> {
   if (!isValidDate(date)) return { ok: false, errors: { sentOn: "Enter a valid date." } };
   if (date > today) return { ok: false, errors: { sentOn: "Can't be in the future." } };
-  const inv = db.select().from(invoices).where(eq(invoices.id, invoiceId)).get();
+  const inv = await db.select().from(invoices).where(eq(invoices.id, invoiceId)).get();
   if (!inv) return { ok: false, errors: { form: "Invoice not found." } };
   if (inv.voidedAt) return { ok: false, errors: { form: "This invoice is void." } };
-  db.update(invoices).set({ sentAt: sentAtFor(date) }).where(eq(invoices.id, invoiceId)).run();
+  await db.update(invoices).set({ sentAt: sentAtFor(date) }).where(eq(invoices.id, invoiceId)).run();
   return { ok: true };
 }
 
 /** Back to draft, e.g. marked sent by mistake. Not allowed once money has been recorded. */
-export function markUnsent(db: Db, invoiceId: number): Result {
-  const active = db
+export async function markUnsent(db: Db, invoiceId: number): Promise<Result> {
+  const active = await db
     .select({ id: payments.id })
     .from(payments)
     .where(and(eq(payments.invoiceId, invoiceId), isNull(payments.voidedAt)))
     .get();
   if (active) return { ok: false, errors: { form: "It has payments recorded. Void them first." } };
-  db.update(invoices).set({ sentAt: null }).where(eq(invoices.id, invoiceId)).run();
+  await db.update(invoices).set({ sentAt: null }).where(eq(invoices.id, invoiceId)).run();
   return { ok: true };
 }

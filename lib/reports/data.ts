@@ -50,8 +50,8 @@ export function splitExpense(row: { amountCents: number; scheduleCLine: string; 
 }
 
 /** Non-voided payments on non-voided invoices, plus non-voided other income, within the range. */
-export function loadIncome(db: Db, range: DateRange): IncomeRow[] {
-  const pays = db
+export async function loadIncome(db: Db, range: DateRange): Promise<IncomeRow[]> {
+  const pays = (await db
     .select({
       id: payments.id,
       date: payments.receivedOn,
@@ -71,10 +71,10 @@ export function loadIncome(db: Db, range: DateRange): IncomeRow[] {
         lte(payments.receivedOn, range.to),
       ),
     )
-    .all()
+    .all())
     .map((r) => ({ ...r, kind: "payment" as const }));
 
-  const other = db
+  const other = (await db
     .select({
       id: otherIncome.id,
       date: otherIncome.receivedOn,
@@ -86,14 +86,14 @@ export function loadIncome(db: Db, range: DateRange): IncomeRow[] {
     .from(otherIncome)
     .leftJoin(clients, eq(clients.id, otherIncome.clientId))
     .where(and(isNull(otherIncome.voidedAt), gte(otherIncome.receivedOn, range.from), lte(otherIncome.receivedOn, range.to)))
-    .all()
+    .all())
     .map((r) => ({ ...r, kind: "other" as const }));
 
   return [...pays, ...other].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id));
 }
 
-export function loadExpenses(db: Db, range: DateRange): ExpenseRow[] {
-  return db
+export async function loadExpenses(db: Db, range: DateRange): Promise<ExpenseRow[]> {
+  return await db
     .select({
       id: expenses.id,
       date: expenses.paidOn,
@@ -113,8 +113,8 @@ export function loadExpenses(db: Db, range: DateRange): ExpenseRow[] {
 }
 
 /** Expenses linked to a payee within the range, plus every payee, for the 1099 report. */
-export function loadPayeePayments(db: Db, range: DateRange) {
-  const rows = db
+export async function loadPayeePayments(db: Db, range: DateRange) {
+  const rows = (await db
     .select({
       id: expenses.id,
       payeeId: expenses.payeeId,
@@ -128,8 +128,8 @@ export function loadPayeePayments(db: Db, range: DateRange) {
     .innerJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
     .where(and(isNotNull(expenses.payeeId), gte(expenses.paidOn, range.from), lte(expenses.paidOn, range.to)))
     .orderBy(expenses.paidOn, expenses.id)
-    .all()
+    .all())
     .map((r) => ({ ...r, payeeId: r.payeeId! }));
-  const payeeList: Payee[] = db.select().from(payees).all();
+  const payeeList: Payee[] = await db.select().from(payees).all();
   return { rows, payees: payeeList };
 }

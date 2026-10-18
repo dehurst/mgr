@@ -13,9 +13,9 @@ import { IncomeForm } from "./income-form";
 
 export default async function OtherIncomePage({ searchParams }: PageProps<"/income">) {
   const range = resolveRange(await searchParams, today());
-  const db = getDb();
-  const { rows, totalCents } = listOtherIncome(db, range);
-  const clientOptions = db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(asc(clients.name)).all();
+  const db = await getDb();
+  const { rows, totalCents } = await listOtherIncome(db, range);
+  const clientOptions = await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(asc(clients.name)).all();
 
   return (
     <>

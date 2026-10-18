@@ -10,12 +10,12 @@ export async function GET(req: Request, ctx: RouteContext<"/payees/[id]/1099">) 
   const id = Number((await ctx.params).id);
   const sp = new URL(req.url).searchParams;
   const year = Number(sp.get("year")) || Number(today().slice(0, 4)) - 1;
-  const db = getDb();
-  const payee = getPayee(db, id);
+  const db = await getDb();
+  const payee = await getPayee(db, id);
   if (!payee) return new Response("Not found", { status: 404 });
-  const row = form1099Report(db, year).rows.find((r) => r.payee.id === id);
+  const row = (await form1099Report(db, year)).rows.find((r) => r.payee.id === id);
   if (!row || row.reportableCents === 0) return new Response(`No reportable payments to ${payee.name} in ${year}.`, { status: 404 });
-  const pdf = await render1099Pdf({ year, payee, amountCents: row.reportableCents, settings: getSettings() });
+  const pdf = await render1099Pdf({ year, payee, amountCents: row.reportableCents, settings: await getSettings() });
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

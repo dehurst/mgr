@@ -8,9 +8,9 @@ import { resolveUpload } from "@/lib/uploads";
 // GET /invoices/:id/pdf?download=1 -> saved as a file
 export async function GET(req: Request, ctx: RouteContext<"/invoices/[id]/pdf">) {
   const id = Number((await ctx.params).id);
-  const detail = getInvoiceDetail(getDb(), id);
+  const detail = await getInvoiceDetail(await getDb(), id);
   if (!detail) return new Response("Not found", { status: 404 });
-  const settings = getSettings();
+  const settings = await getSettings();
   const pdf = await renderInvoicePdf({
     detail,
     settings,

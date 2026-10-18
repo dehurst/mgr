@@ -55,17 +55,17 @@ export function parseExpenseForm(
 }
 
 /** Archived categories can't be picked for new expenses, but an existing expense may keep one. */
-export function checkCategory(db: Db, categoryId: number, currentCategoryId?: number): string | null {
-  const cat = db.select().from(expenseCategories).where(eq(expenseCategories.id, categoryId)).get();
+export async function checkCategory(db: Db, categoryId: number, currentCategoryId?: number): Promise<string | null> {
+  const cat = await db.select().from(expenseCategories).where(eq(expenseCategories.id, categoryId)).get();
   if (!cat) return "That category no longer exists.";
   if (cat.archivedAt && cat.id !== currentCategoryId) return "That category is archived. Pick another or restore it in Settings.";
   return null;
 }
 
 /** Like checkCategory: archived payees stay on old expenses but can't be picked for new ones. */
-export function checkPayee(db: Db, payeeId: number | null, currentPayeeId?: number | null): string | null {
+export async function checkPayee(db: Db, payeeId: number | null, currentPayeeId?: number | null): Promise<string | null> {
   if (payeeId === null) return null;
-  const p = db.select().from(payees).where(eq(payees.id, payeeId)).get();
+  const p = await db.select().from(payees).where(eq(payees.id, payeeId)).get();
   if (!p) return "That payee no longer exists.";
   if (p.archivedAt && p.id !== currentPayeeId) return "That payee is archived. Pick another or restore it.";
   return null;
@@ -73,8 +73,8 @@ export function checkPayee(db: Db, payeeId: number | null, currentPayeeId?: numb
 
 export type ExpenseFilter = { range: DateRange; categoryId?: number; payeeId?: number };
 
-export function listExpenses(db: Db, f: ExpenseFilter) {
-  const rows = db
+export async function listExpenses(db: Db, f: ExpenseFilter) {
+  const rows = await db
     .select({
       id: expenses.id,
       paidOn: expenses.paidOn,
@@ -113,25 +113,25 @@ export function listExpenses(db: Db, f: ExpenseFilter) {
   };
 }
 
-export function getExpense(db: Db, id: number) {
-  return db.select().from(expenses).where(eq(expenses.id, id)).get();
+export async function getExpense(db: Db, id: number) {
+  return await db.select().from(expenses).where(eq(expenses.id, id)).get();
 }
 
 /** Vendors used before, most recent first, for the form's autocomplete. */
-export function recentVendors(db: Db): string[] {
-  return db
+export async function recentVendors(db: Db): Promise<string[]> {
+  return (await db
     .select({ vendor: expenses.vendor, last: sql<string>`max(${expenses.paidOn})` })
     .from(expenses)
     .groupBy(expenses.vendor)
     .orderBy(desc(sql`max(${expenses.paidOn})`))
     .limit(100)
-    .all()
+    .all())
     .map((r) => r.vendor);
 }
 
 /** Active categories plus (when editing) the expense's current one, even if archived. */
-export function categoryOptions(db: Db, includeId?: number) {
-  return db
+export async function categoryOptions(db: Db, includeId?: number) {
+  return await db
     .select({
       id: expenseCategories.id,
       name: expenseCategories.name,
@@ -155,10 +155,11 @@ export function parseBusinessPct(raw: string): number | null {
 }
 
 /** Set every expense in a category to the given business-use percent. Returns how many changed. */
-export function applyBusinessPctToCategory(db: Db, categoryId: number, businessPct: number): number {
-  return db
+export async function applyBusinessPctToCategory(db: Db, categoryId: number, businessPct: number): Promise<number> {
+  const result = await db
     .update(expenses)
     .set({ businessPct })
     .where(and(eq(expenses.categoryId, categoryId), ne(expenses.businessPct, businessPct)))
-    .run().changes;
+    .run();
+  return result.rowsAffected;
 }

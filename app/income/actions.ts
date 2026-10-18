@@ -21,19 +21,19 @@ export async function saveOtherIncome(id: number | null, _prev: ActionState, fd:
     today(),
   );
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
-  const db = getDb();
+  const db = await getDb();
   if (id) {
-    db.update(otherIncome).set(parsed.input).where(eq(otherIncome.id, id)).run();
+    await db.update(otherIncome).set(parsed.input).where(eq(otherIncome.id, id)).run();
     revalidatePath("/", "layout");
     redirect("/income");
   }
-  db.insert(otherIncome).values(parsed.input).run();
+  await db.insert(otherIncome).values(parsed.input).run();
   revalidatePath("/", "layout");
   return { ok: true, message: `Added ${parsed.input.source}.` };
 }
 
 export async function deleteOtherIncome(id: number): Promise<string | void> {
-  getDb().delete(otherIncome).where(eq(otherIncome.id, id)).run();
+  await (await getDb()).delete(otherIncome).where(eq(otherIncome.id, id)).run();
   revalidatePath("/", "layout");
   redirect("/income");
 }

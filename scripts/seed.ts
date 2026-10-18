@@ -1,16 +1,29 @@
-// Fill DATABASE_PATH with demo data. Refuses if the database already has clients, invoices,
-// expenses, or income, so it can never mix fake data into real books.
+// Fill the configured database with demo data. Refuses if it already has clients, invoices,
+// expenses, income, or payees, so it can never mix fake data into real books.
 import "./env";
-import { databasePath, openDb } from "../db";
+import { openConfiguredDb } from "../db";
 import { hasData, seedDemo } from "../db/seed";
 import { today } from "../lib/dates";
 
-const file = databasePath();
-const db = openDb(file);
-if (hasData(db)) {
-  console.error(`Refusing to seed: ${file} already has data.`);
-  process.exit(1);
+async function main(): Promise<number> {
+  const { db, label } = await openConfiguredDb();
+  try {
+    if (await hasData(db)) {
+      console.error(`Refusing to seed: ${label} already has data.`);
+      return 1;
+    }
+    await seedDemo(db, today());
+    console.log(`Demo data added to ${label}`);
+    return 0;
+  } finally {
+    db.$client.close();
+  }
 }
-seedDemo(db, today());
-db.$client.close();
-console.log(`Demo data added to ${file}`);
+
+main().then(
+  (code) => process.exit(code),
+  (e) => {
+    console.error(e);
+    process.exit(1);
+  },
+);

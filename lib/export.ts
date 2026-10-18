@@ -28,23 +28,23 @@ export type ExportTable = { file: string; rows: Cell[][] };
 
 const money = (cents: number | null) => (cents === null ? "" : $(cents));
 
-export function exportTables(db: Db, today: DateStr): ExportTable[] {
-  const clientName = new Map(db.select({ id: clients.id, name: clients.name }).from(clients).all().map((c) => [c.id, c.name]));
-  const payeeName = new Map(db.select({ id: payees.id, name: payees.name }).from(payees).all().map((p) => [p.id, p.name]));
-  const invoiceRows = db.select({ id: invoices.id, number: invoices.number, notes: invoices.notes }).from(invoices).all();
+export async function exportTables(db: Db, today: DateStr): Promise<ExportTable[]> {
+  const clientName = new Map((await db.select({ id: clients.id, name: clients.name }).from(clients).all()).map((c) => [c.id, c.name]));
+  const payeeName = new Map((await db.select({ id: payees.id, name: payees.name }).from(payees).all()).map((p) => [p.id, p.name]));
+  const invoiceRows = await db.select({ id: invoices.id, number: invoices.number, notes: invoices.notes }).from(invoices).all();
   const invoiceNumber = new Map(invoiceRows.map((i) => [i.id, i.number]));
   const invoiceNotes = new Map(invoiceRows.map((i) => [i.id, i.notes]));
   const lineNo = new Map<number, number>();
   const name = (m: Map<number, string>, id: number | null) => (id === null ? "" : (m.get(id) ?? ""));
 
-  const s = db.select().from(businessSettings).where(eq(businessSettings.id, 1)).get();
+  const s = await db.select().from(businessSettings).where(eq(businessSettings.id, 1)).get();
 
   return [
     {
       file: "invoices.csv",
       rows: [
         ["Number", "Client", "Issued", "Due", "Status", "Total", "Paid", "Balance", "Sent at", "Voided at", "Notes"],
-        ...listInvoiceSummaries(db, today)
+        ...(await listInvoiceSummaries(db, today))
           .sort((a, b) => a.issuedOn.localeCompare(b.issuedOn) || a.number.localeCompare(b.number))
           .map((i) => [
             i.number,
@@ -65,11 +65,11 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "invoice-lines.csv",
       rows: [
         ["Invoice", "Line", "Description", "Hours", "Rate", "Amount"],
-        ...db
+        ...(await db
           .select()
           .from(invoiceLineItems)
           .orderBy(asc(invoiceLineItems.invoiceId), asc(invoiceLineItems.sortOrder), asc(invoiceLineItems.id))
-          .all()
+          .all())
           .map((l) => [
             name(invoiceNumber, l.invoiceId),
             lineNo.set(l.invoiceId, (lineNo.get(l.invoiceId) ?? 0) + 1).get(l.invoiceId),
@@ -84,12 +84,12 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "payments-received.csv",
       rows: [
         ["Received", "Invoice", "Client", "Amount", "Method", "Reference", "Notes", "Voided at"],
-        ...db
+        ...(await db
           .select({ p: payments, clientId: invoices.clientId })
           .from(payments)
           .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
           .orderBy(asc(payments.receivedOn), asc(payments.id))
-          .all()
+          .all())
           .map(({ p, clientId }) => [
             p.receivedOn,
             name(invoiceNumber, p.invoiceId),
@@ -106,11 +106,11 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "other-income.csv",
       rows: [
         ["Received", "Source", "Client", "Amount", "Notes", "Voided at"],
-        ...db
+        ...(await db
           .select()
           .from(otherIncome)
           .orderBy(asc(otherIncome.receivedOn), asc(otherIncome.id))
-          .all()
+          .all())
           .map((o) => [o.receivedOn, o.source, name(clientName, o.clientId), $(o.amountCents), o.notes, o.voidedAt]),
       ],
     },
@@ -118,12 +118,12 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "expenses.csv",
       rows: [
         ["Paid", "Vendor", "Category", "Schedule C", "Amount paid", "Business %", "Business amount", "Personal amount", "Paid with", "Payee (1099)", "Client", "Description", "Receipt file"],
-        ...db
+        ...(await db
           .select({ e: expenses, category: expenseCategories.name, scheduleCLine: expenseCategories.scheduleCLine })
           .from(expenses)
           .innerJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
           .orderBy(asc(expenses.paidOn), asc(expenses.id))
-          .all()
+          .all())
           .map(({ e, category, scheduleCLine }) => {
             const split = splitExpense({ amountCents: e.amountCents, businessPct: e.businessPct, scheduleCLine });
             return [
@@ -148,11 +148,11 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "expense-categories.csv",
       rows: [
         ["Name", "Schedule C", "Default business %", "Archived at"],
-        ...db
+        ...(await db
           .select()
           .from(expenseCategories)
           .orderBy(asc(expenseCategories.name))
-          .all()
+          .all())
           .map((c) => [c.name, scheduleCLabel(c.scheduleCLine), c.businessPct, c.archivedAt]),
       ],
     },
@@ -160,11 +160,11 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "clients.csv",
       rows: [
         ["Name", "Contact", "Email", "Billing address", "Default rate", "Notes", "Archived at"],
-        ...db
+        ...(await db
           .select()
           .from(clients)
           .orderBy(asc(clients.name))
-          .all()
+          .all())
           .map((c) => [c.name, c.contactName, c.email, c.billingAddress, money(c.defaultRateCents), c.notes, c.archivedAt]),
       ],
     },
@@ -172,11 +172,11 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
       file: "payees.csv",
       rows: [
         ["Name", "Business name", "Email", "Address", "Tax classification", "Attorney", "Tax ID (last 4)", "W-9 received", "Notes", "Archived at"],
-        ...db
+        ...(await db
           .select()
           .from(payees)
           .orderBy(asc(payees.name))
-          .all()
+          .all())
           .map((p) => [
             p.name,
             p.businessName,
@@ -210,9 +210,9 @@ export function exportTables(db: Db, today: DateStr): ExportTable[] {
 }
 
 /** All tables as CSVs in one zip (UTF-8 with BOM so Excel shows accents correctly). */
-export function exportZip(db: Db, today: DateStr): Uint8Array {
+export async function exportZip(db: Db, today: DateStr): Promise<Uint8Array> {
   const files: Record<string, Uint8Array> = {};
-  for (const t of exportTables(db, today)) files[t.file] = strToU8("﻿" + toCsv(t.rows));
+  for (const t of await exportTables(db, today)) files[t.file] = strToU8("﻿" + toCsv(t.rows));
   files["README.txt"] = strToU8(
     [
       `Ledger export, ${today}`,

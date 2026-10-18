@@ -20,25 +20,25 @@ import {
 // GET /reports/csv?report=pnl|expenses|aging|income-by-client|tax|1099&range=…|from=…&to=…|year=…
 export async function GET(req: Request) {
   const sp = Object.fromEntries(new URL(req.url).searchParams);
-  const db = getDb();
+  const db = await getDb();
   const range = resolveRange(sp, today());
   const tag = `${range.from}_to_${range.to}`;
   switch (sp.report) {
     case "pnl":
-      return csvResponse(`profit-and-loss_${tag}.csv`, pnlCsv(pnlReport(db, range, sp.compare === "1")));
+      return csvResponse(`profit-and-loss_${tag}.csv`, pnlCsv(await pnlReport(db, range, sp.compare === "1")));
     case "expenses":
-      return csvResponse(`expenses_${tag}.csv`, expensesCsv(expensesReportData(db, range)));
+      return csvResponse(`expenses_${tag}.csv`, expensesCsv(await expensesReportData(db, range)));
     case "aging":
-      return csvResponse(`ar-aging_${today()}.csv`, agingCsv(agingReport(db, today())));
+      return csvResponse(`ar-aging_${today()}.csv`, agingCsv(await agingReport(db, today())));
     case "income-by-client":
-      return csvResponse(`income-by-client_${tag}.csv`, incomeByClientCsv(incomeByClientReport(db, range)));
+      return csvResponse(`income-by-client_${tag}.csv`, incomeByClientCsv(await incomeByClientReport(db, range)));
     case "tax": {
       const year = Number(sp.year) || Number(today().slice(0, 4));
-      return csvResponse(`schedule-c-summary_${year}.csv`, taxCsv(taxReport(db, year)));
+      return csvResponse(`schedule-c-summary_${year}.csv`, taxCsv(await taxReport(db, year)));
     }
     case "1099": {
       const year = Number(sp.year) || Number(today().slice(0, 4));
-      return csvResponse(`1099-nec-summary_${year}.csv`, form1099Csv(form1099Report(db, year)));
+      return csvResponse(`1099-nec-summary_${year}.csv`, form1099Csv(await form1099Report(db, year)));
     }
     default:
       return new Response("Unknown report", { status: 400 });

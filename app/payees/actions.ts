@@ -23,19 +23,19 @@ export async function savePayee(id: number | null, _prev: ActionState, fd: FormD
   });
   if (!parsed.ok) return { ok: false, errors: parsed.errors, message: "Please fix the highlighted fields." };
 
-  const db = getDb();
+  const db = await getDb();
   let payeeId = id;
   if (id) {
-    db.update(payees).set(parsed.input).where(eq(payees.id, id)).run();
+    await db.update(payees).set(parsed.input).where(eq(payees.id, id)).run();
   } else {
-    payeeId = db.insert(payees).values(parsed.input).returning({ id: payees.id }).get().id;
+    payeeId = (await db.insert(payees).values(parsed.input).returning({ id: payees.id }).get()).id;
   }
   revalidatePath("/", "layout");
   redirect(`/payees/${payeeId}`);
 }
 
 export async function setPayeeArchived(id: number, archived: boolean): Promise<void> {
-  getDb()
+  await (await getDb())
     .update(payees)
     .set({ archivedAt: archived ? new Date().toISOString() : null })
     .where(eq(payees.id, id))
@@ -44,7 +44,7 @@ export async function setPayeeArchived(id: number, archived: boolean): Promise<v
 }
 
 export async function removePayee(id: number): Promise<string | void> {
-  const r = deletePayee(getDb(), id);
+  const r = await deletePayee(await getDb(), id);
   if (!r.ok) return r.error;
   revalidatePath("/", "layout");
   redirect("/payees");

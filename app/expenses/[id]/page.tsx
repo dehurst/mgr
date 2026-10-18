@@ -12,10 +12,10 @@ import { ExpenseForm } from "../expense-form";
 
 export default async function EditExpensePage({ params }: PageProps<"/expenses/[id]">) {
   const id = Number((await params).id);
-  const db = getDb();
-  const expense = getExpense(db, id);
+  const db = await getDb();
+  const expense = await getExpense(db, id);
   if (!expense) notFound();
-  const clientOptions = db
+  const clientOptions = await db
     .select({ id: clients.id, name: clients.name })
     .from(clients)
     .where(expense.clientId ? or(isNull(clients.archivedAt), eq(clients.id, expense.clientId)) : isNull(clients.archivedAt))
@@ -38,10 +38,10 @@ export default async function EditExpensePage({ params }: PageProps<"/expenses/[
       />
       <ExpenseForm
         expense={expense}
-        categories={categoryOptions(db, expense.categoryId)}
+        categories={await categoryOptions(db, expense.categoryId)}
         clients={clientOptions}
-        payees={payeeOptions(db, expense.payeeId)}
-        vendors={recentVendors(db)}
+        payees={await payeeOptions(db, expense.payeeId)}
+        vendors={await recentVendors(db)}
         defaults={{ paidOn: expense.paidOn, paymentMethod: expense.paymentMethod }}
       />
     </>

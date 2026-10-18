@@ -7,8 +7,8 @@ import { PERSONAL_CATEGORY_NAME, PERSONAL_LINE } from "@/lib/schedule-c";
  * Delete every record and put back a fresh install's settings and categories (including the
  * personal category, which a migration normally adds). Uploaded files are not touched.
  */
-export function wipeData(db: Db): void {
-  db.transaction((tx) => {
+export async function wipeData(db: Db): Promise<void> {
+  await db.transaction(async (tx) => {
     // Children before parents, for the foreign keys.
     for (const t of [
       schema.payments,
@@ -21,9 +21,9 @@ export function wipeData(db: Db): void {
       schema.expenseCategories,
       schema.businessSettings,
     ]) {
-      tx.delete(t).run();
+      await tx.delete(t).run();
     }
-    tx.insert(schema.expenseCategories).values({ name: PERSONAL_CATEGORY_NAME, scheduleCLine: PERSONAL_LINE }).run();
+    await tx.insert(schema.expenseCategories).values({ name: PERSONAL_CATEGORY_NAME, scheduleCLine: PERSONAL_LINE }).run();
   });
-  ensureDefaults(db);
+  await ensureDefaults(db);
 }

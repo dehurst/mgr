@@ -28,15 +28,15 @@ export async function saveInvoice(id: number | null, _prev: ActionState, fd: For
   });
   if (!parsed.ok) return { ok: false, errors: parsed.errors, message: "Please fix the highlighted fields." };
 
-  const db = getDb();
-  const result = id ? updateInvoice(db, id, parsed.input) : createInvoice(db, parsed.input);
+  const db = await getDb();
+  const result = id ? await updateInvoice(db, id, parsed.input) : await createInvoice(db, parsed.input);
   if (!result.ok) return { ok: false, errors: result.errors, message: result.errors.form ?? "Please fix the highlighted fields." };
   revalidatePath("/", "layout");
   redirect(`/invoices/${result.id}`);
 }
 
 export async function duplicate(id: number): Promise<string | void> {
-  const r = duplicateInvoice(getDb(), id, today());
+  const r = await duplicateInvoice(await getDb(), id, today());
   if (!r.ok) return Object.values(r.errors)[0];
   revalidatePath("/", "layout");
   redirect(`/invoices/${r.id}/edit`);
@@ -44,24 +44,24 @@ export async function duplicate(id: number): Promise<string | void> {
 
 /** Drafts delete after a confirm(); anything else requires typing the invoice number. */
 export async function deletePermanently(id: number, typed?: string): Promise<string | void> {
-  const db = getDb();
-  const d = getInvoiceDetail(db, id);
+  const db = await getDb();
+  const d = await getInvoiceDetail(db, id);
   if (!d) return "Invoice not found.";
   if (d.invoice.sentAt && typed?.trim() !== d.invoice.number) return "The number didn't match, so nothing was deleted.";
-  const r = deleteInvoice(db, id);
+  const r = await deleteInvoice(db, id);
   if (!r.ok) return r.error;
   revalidatePath("/", "layout");
   redirect("/invoices");
 }
 
 export async function voidIt(id: number, reason?: string): Promise<string | void> {
-  const r = voidInvoice(getDb(), id, (reason ?? "").trim());
+  const r = await voidInvoice(await getDb(), id, (reason ?? "").trim());
   if (!r.ok) return r.error;
   revalidatePath("/", "layout");
 }
 
 export async function unvoid(id: number): Promise<string | void> {
-  unvoidInvoice(getDb(), id);
+  await unvoidInvoice(await getDb(), id);
   revalidatePath("/", "layout");
 }
 
@@ -70,14 +70,14 @@ function firstError(errors: Record<string, string>): string {
 }
 
 export async function markSentAction(id: number, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const r = markSent(getDb(), id, str(fd, "sentOn"), today());
+  const r = await markSent(await getDb(), id, str(fd, "sentOn"), today());
   if (!r.ok) return { ok: false, errors: r.errors, message: firstError(r.errors) };
   revalidatePath("/", "layout");
   return { ok: true };
 }
 
 export async function markUnsentAction(id: number): Promise<string | void> {
-  const r = markUnsent(getDb(), id);
+  const r = await markUnsent(await getDb(), id);
   if (!r.ok) return firstError(r.errors);
   revalidatePath("/", "layout");
 }
@@ -94,14 +94,14 @@ export async function recordPaymentAction(id: number, _prev: ActionState, fd: Fo
     today(),
   );
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
-  const r = recordPayment(getDb(), id, parsed.input);
+  const r = await recordPayment(await getDb(), id, parsed.input);
   if (!r.ok) return { ok: false, errors: r.errors, message: r.errors.form };
   revalidatePath("/", "layout");
   return { ok: true, message: "Payment recorded." };
 }
 
 export async function voidPaymentAction(paymentId: number): Promise<string | void> {
-  const r = voidPayment(getDb(), paymentId);
+  const r = await voidPayment(await getDb(), paymentId);
   if (!r.ok) return firstError(r.errors);
   revalidatePath("/", "layout");
 }

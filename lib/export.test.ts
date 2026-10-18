@@ -1,15 +1,20 @@
 import { strFromU8, unzipSync } from "fflate";
-import { describe, expect, it } from "vitest";
-import { openDb } from "@/db";
+import { beforeAll, describe, expect, it } from "vitest";
+import { openDb, type Db } from "@/db";
+import type { Cell } from "./csv";
 import { seedDemo } from "@/db/seed";
 import { exportTables, exportZip } from "./export";
 
 describe("export all data", () => {
-  const db = openDb(":memory:");
-  seedDemo(db, "2026-10-05");
-  const tables = Object.fromEntries(exportTables(db, "2026-10-05").map((t) => [t.file, t.rows]));
+  let db: Db;
+  let tables: Record<string, Cell[][]>;
+  beforeAll(async () => {
+    db = await openDb(":memory:");
+    await seedDemo(db, "2026-10-05");
+    tables = Object.fromEntries((await exportTables(db, "2026-10-05")).map((t) => [t.file, t.rows]));
+  });
 
-  it("includes voided invoices and splits mixed-use expenses", () => {
+  it("includes voided invoices and splits mixed-use expenses", async () => {
     const invoices = tables["invoices.csv"];
     expect(invoices[0][0]).toBe("Number");
     expect(invoices.slice(1).some((r) => r[4] === "Void" && r[9])).toBe(true);
@@ -20,14 +25,14 @@ describe("export all data", () => {
     expect(expenses.slice(1).some((r) => r[9] === "Sam Rivera")).toBe(true);
   });
 
-  it("numbers invoice lines per invoice", () => {
+  it("numbers invoice lines per invoice", async () => {
     const lines = tables["invoice-lines.csv"].slice(1);
     const first = lines.filter((r) => r[0] === lines[0][0]).map((r) => r[1]);
     expect(first).toEqual(first.map((_, i) => i + 1));
   });
 
-  it("zips one CSV per table plus a README", () => {
-    const files = unzipSync(exportZip(db, "2026-10-05"));
+  it("zips one CSV per table plus a README", async () => {
+    const files = unzipSync(await exportZip(db, "2026-10-05"));
     expect(Object.keys(files).sort()).toEqual([...Object.keys(tables), "README.txt"].sort());
     // UTF-8 byte-order mark first, so Excel reads accents correctly.
     expect([...files["clients.csv"].subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);

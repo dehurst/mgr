@@ -5,7 +5,7 @@ import { getClient } from "@/lib/clients";
 import { ClientForm } from "../../client-form";
 
 export default async function EditClientPage({ params }: PageProps<"/clients/[id]/edit">) {
-  const client = getClient(getDb(), Number((await params).id));
+  const client = await getClient(await getDb(), Number((await params).id));
   if (!client) notFound();
   return (
     <>

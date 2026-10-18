@@ -14,7 +14,7 @@ import { getSettings } from "@/lib/settings";
 export default async function ExpenseReportPage({ searchParams }: PageProps<"/reports/expenses">) {
   const sp = await searchParams;
   const range = resolveRange(sp, today(), "ytd");
-  const r = expensesReportData(getDb(), range);
+  const r = await expensesReportData(await getDb(), range);
   const categoryId = Number(sp.category) || null;
   const vendor = typeof sp.vendor === "string" ? sp.vendor : "";
   const base = `/reports/expenses?${rangeQuery(range)}`;
@@ -35,7 +35,7 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
       <ReportHeader
         title="Expense report"
         period={`${formatDate(range.from)} – ${formatDate(range.to)} · ${r.count} expense${r.count === 1 ? "" : "s"} · ${formatCents(r.totalCents)}`}
-        businessName={getSettings().businessName}
+        businessName={(await getSettings()).businessName}
         csvHref={`/reports/csv?report=expenses&${rangeQuery(range)}`}
       />
       <div className="grid gap-6">

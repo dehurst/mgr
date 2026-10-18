@@ -29,9 +29,9 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
   if (taxId === null) errors.taxId = "Enter 9 digits, like 12-3456789.";
   if (nextInvoiceNumber === null || nextInvoiceNumber < 1) errors.nextInvoiceNumber = "Enter a whole number ≥ 1.";
 
-  const db = getDb();
+  const db = await getDb();
   if (nextInvoiceNumber !== null && !errors.invoicePrefix) {
-    const clash = db
+    const clash = await db
       .select({ id: invoices.id })
       .from(invoices)
       .where(eq(invoices.number, `${invoicePrefix}${nextInvoiceNumber}`))
@@ -39,7 +39,7 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
     if (clash) errors.nextInvoiceNumber = `${invoicePrefix}${nextInvoiceNumber} already exists. Pick a higher number.`;
   }
 
-  const current = getSettings();
+  const current = await getSettings();
   let logoPath = current.logoPath;
   const logo = file(fd, "logo");
   if (logo && Object.keys(errors).length === 0) {
@@ -52,7 +52,7 @@ export async function updateSettings(_prev: ActionState, fd: FormData): Promise<
 
   if (Object.keys(errors).length > 0) return { ok: false, errors, message: "Please fix the highlighted fields." };
 
-  db.update(businessSettings)
+  await db.update(businessSettings)
     .set({
       businessName,
       address: str(fd, "address"),
@@ -85,9 +85,9 @@ function categoryFields(fd: FormData): { name: string; scheduleCLine: string; bu
   return { name, scheduleCLine, businessPct: businessPct ?? 100, errors };
 }
 
-function nameTaken(name: string, exceptId?: number): boolean {
-  const db = getDb();
-  const rows = db
+async function nameTaken(name: string, exceptId?: number): Promise<boolean> {
+  const db = await getDb();
+  const rows = await db
     .select({ id: expenseCategories.id, name: expenseCategories.name })
     .from(expenseCategories)
     .where(exceptId ? ne(expenseCategories.id, exceptId) : undefined)
@@ -97,28 +97,28 @@ function nameTaken(name: string, exceptId?: number): boolean {
 
 export async function createCategory(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { name, scheduleCLine, businessPct, errors } = categoryFields(fd);
-  if (!errors.name && nameTaken(name)) errors.name = "A category with that name already exists.";
+  if (!errors.name && (await nameTaken(name))) errors.name = "A category with that name already exists.";
   if (Object.keys(errors).length) return { ok: false, errors };
-  getDb().insert(expenseCategories).values({ name, scheduleCLine, businessPct }).run();
+  await (await getDb()).insert(expenseCategories).values({ name, scheduleCLine, businessPct }).run();
   revalidatePath("/settings/categories");
   return { ok: true, message: `Added “${name}”.` };
 }
 
 export async function updateCategory(id: number, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const { name, scheduleCLine, businessPct, errors } = categoryFields(fd);
-  if (!errors.name && nameTaken(name, id)) errors.name = "A category with that name already exists.";
+  if (!errors.name && (await nameTaken(name, id))) errors.name = "A category with that name already exists.";
   if (Object.keys(errors).length) return { ok: false, errors };
-  const db = getDb();
-  const changed = db.transaction((tx) => {
-    tx.update(expenseCategories).set({ name, scheduleCLine, businessPct }).where(eq(expenseCategories.id, id)).run();
-    return str(fd, "applyToExisting") === "on" ? applyBusinessPctToCategory(tx as unknown as Db, id, businessPct) : 0;
+  const db = await getDb();
+  const changed = await db.transaction(async (tx) => {
+    await tx.update(expenseCategories).set({ name, scheduleCLine, businessPct }).where(eq(expenseCategories.id, id)).run();
+    return str(fd, "applyToExisting") === "on" ? await applyBusinessPctToCategory(tx as unknown as Db, id, businessPct) : 0;
   });
   revalidatePath("/", "layout");
   return { ok: true, message: changed ? `Saved. ${changed} past expense${changed === 1 ? "" : "s"} set to ${businessPct}% business.` : "Saved." };
 }
 
 export async function setCategoryArchived(id: number, archived: boolean): Promise<void> {
-  getDb()
+  await (await getDb())
     .update(expenseCategories)
     .set({ archivedAt: archived ? new Date().toISOString() : null })
     .where(eq(expenseCategories.id, id))

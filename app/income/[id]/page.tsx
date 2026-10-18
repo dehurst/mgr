@@ -12,8 +12,8 @@ import { IncomeForm } from "../income-form";
 
 export default async function EditIncomePage({ params }: PageProps<"/income/[id]">) {
   const id = Number((await params).id);
-  const db = getDb();
-  const entry = getOtherIncome(db, id);
+  const db = await getDb();
+  const entry = await getOtherIncome(db, id);
   if (!entry) notFound();
   return (
     <>
@@ -31,7 +31,7 @@ export default async function EditIncomePage({ params }: PageProps<"/income/[id]
       />
       <Card>
         <CardContent>
-          <IncomeForm entry={entry} clients={db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(asc(clients.name)).all()} today={today()} />
+          <IncomeForm entry={entry} clients={await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(asc(clients.name)).all()} today={today()} />
         </CardContent>
       </Card>
     </>

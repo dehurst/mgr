@@ -14,7 +14,7 @@ import { PaymentsPanel, SentPanel } from "./payments-panel";
 
 export default async function InvoicePage({ params }: PageProps<"/invoices/[id]">) {
   const id = Number((await params).id);
-  const d = getInvoiceDetail(getDb(), id);
+  const d = await getInvoiceDetail(await getDb(), id);
   if (!d) notFound();
   const { invoice, client } = d;
   const statusInput = { ...invoice, totalCents: d.totalCents, paidCents: d.paidCents };

@@ -16,17 +16,25 @@ const next = path.join(ROOT, "node_modules", "next", "dist", "bin", "next");
 
 for (const f of [dbFile, `${dbFile}-wal`, `${dbFile}-shm`]) fs.rmSync(f, { force: true });
 fs.rmSync(uploads, { recursive: true, force: true });
-const db = openDb(dbFile);
-seedDemo(db, today());
-db.$client.close();
 
-// Overrides .env.local, which Next won't apply over variables that are already set.
-const env = { ...process.env, DATABASE_PATH: dbFile, UPLOADS_DIR: uploads, LEDGER_DEMO: "1" };
-if (!fs.existsSync(path.join(ROOT, ".next", "BUILD_ID"))) {
-  console.log("Building the app first (one time)…");
-  const build = spawnSync(process.execPath, [next, "build"], { stdio: "inherit", env });
-  if (build.status !== 0) process.exit(build.status ?? 1);
+async function main() {
+  const db = await openDb(dbFile);
+  await seedDemo(db, today());
+  db.$client.close();
+
+  // Overrides .env.local, which Next won't apply over variables that are already set.
+  const env = { ...process.env, DATABASE_PATH: dbFile, UPLOADS_DIR: uploads, LEDGER_DEMO: "1" };
+  if (!fs.existsSync(path.join(ROOT, ".next", "BUILD_ID"))) {
+    console.log("Building the app first (one time)…");
+    const build = spawnSync(process.execPath, [next, "build"], { stdio: "inherit", env });
+    if (build.status !== 0) process.exit(build.status ?? 1);
+  }
+  console.log(`\nDemo running at http://127.0.0.1:${port} with fake data. Your real books aren't touched.\nCtrl+C to stop.\n`);
+  const child = spawn(process.execPath, [next, "start", "-H", "127.0.0.1", "-p", port], { stdio: "inherit", env });
+  child.on("exit", (code) => process.exit(code ?? 0));
 }
-console.log(`\nDemo running at http://127.0.0.1:${port} with fake data. Your real books aren't touched.\nCtrl+C to stop.\n`);
-const child = spawn(process.execPath, [next, "start", "-H", "127.0.0.1", "-p", port], { stdio: "inherit", env });
-child.on("exit", (code) => process.exit(code ?? 0));
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

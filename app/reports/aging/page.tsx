@@ -10,15 +10,15 @@ import { agingReport } from "@/lib/reports";
 import { AGING_BUCKETS, AGING_LABELS } from "@/lib/reports/aging";
 import { getSettings } from "@/lib/settings";
 
-export default function AgingPage() {
+export default async function AgingPage() {
   const asOf = today();
-  const r = agingReport(getDb(), asOf);
+  const r = await agingReport(await getDb(), asOf);
   return (
     <>
       <ReportHeader
         title="Accounts receivable aging"
         period={`Open invoices as of ${formatDate(asOf)} · days past the due date`}
-        businessName={getSettings().businessName}
+        businessName={(await getSettings()).businessName}
         csvHref="/reports/csv?report=aging"
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">

@@ -3,8 +3,8 @@ import { today } from "@/lib/dates";
 import { exportZip } from "@/lib/export";
 
 // GET /export -> every table as CSV, in one zip.
-export function GET() {
-  const zip = exportZip(getDb(), today());
+export async function GET() {
+  const zip = await exportZip(await getDb(), today());
   return new Response(new Uint8Array(zip), {
     headers: {
       "Content-Type": "application/zip",

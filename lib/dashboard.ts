@@ -11,9 +11,9 @@ import { computePnl } from "./reports/pnl";
 export type Activity = { date: DateStr; kind: "payment" | "income" | "expense" | "sent" | "created"; text: string; cents: number | null; href: string };
 
 /** Latest events across payments, other income, expenses, and invoices. */
-export function recentActivity(db: Db, limit = 8): Activity[] {
+export async function recentActivity(db: Db, limit = 8): Promise<Activity[]> {
   const out: Activity[] = [];
-  for (const p of db
+  for (const p of await db
     .select({ id: invoices.id, date: payments.receivedOn, cents: payments.amountCents, number: invoices.number, client: clients.name })
     .from(payments)
     .innerJoin(invoices, eq(invoices.id, payments.invoiceId))
@@ -24,13 +24,13 @@ export function recentActivity(db: Db, limit = 8): Activity[] {
     .all())
     out.push({ date: p.date, kind: "payment", text: `Payment from ${p.client} on ${p.number}`, cents: p.cents, href: `/invoices/${p.id}` });
 
-  for (const o of db.select().from(otherIncome).where(isNull(otherIncome.voidedAt)).orderBy(desc(otherIncome.receivedOn)).limit(limit).all())
+  for (const o of await db.select().from(otherIncome).where(isNull(otherIncome.voidedAt)).orderBy(desc(otherIncome.receivedOn)).limit(limit).all())
     out.push({ date: o.receivedOn, kind: "income", text: o.source, cents: o.amountCents, href: `/income/${o.id}` });
 
-  for (const e of db.select().from(expenses).orderBy(desc(expenses.paidOn), desc(expenses.id)).limit(limit).all())
+  for (const e of await db.select().from(expenses).orderBy(desc(expenses.paidOn), desc(expenses.id)).limit(limit).all())
     out.push({ date: e.paidOn, kind: "expense", text: e.vendor, cents: e.amountCents, href: `/expenses/${e.id}` });
 
-  for (const i of db
+  for (const i of await db
     .select({ id: invoices.id, number: invoices.number, sentAt: invoices.sentAt, client: clients.name })
     .from(invoices)
     .innerJoin(clients, eq(clients.id, invoices.clientId))
@@ -43,12 +43,12 @@ export function recentActivity(db: Db, limit = 8): Activity[] {
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, limit);
 }
 
-export function dashboardData(db: Db, today: DateStr) {
+export async function dashboardData(db: Db, today: DateStr) {
   const ytd = presetRange("ytd", today);
   const month = presetRange("this_month", today);
-  const ytdPnl = computePnl(loadIncome(db, ytd), loadExpenses(db, ytd));
-  const monthPnl = computePnl(loadIncome(db, month), loadExpenses(db, month));
-  const summaries = listInvoiceSummaries(db, today);
+  const ytdPnl = computePnl(await loadIncome(db, ytd), await loadExpenses(db, ytd));
+  const monthPnl = computePnl(await loadIncome(db, month), await loadExpenses(db, month));
+  const summaries = await listInvoiceSummaries(db, today);
   const aging = computeAging(summaries, today);
   const overdue = summaries
     .filter((s) => s.status === "overdue")
@@ -56,6 +56,6 @@ export function dashboardData(db: Db, today: DateStr) {
     .slice(0, 5);
   const drafts = summaries.filter((s) => s.status === "draft").length;
   const personalCategoryId =
-    db.select({ id: expenseCategories.id }).from(expenseCategories).where(eq(expenseCategories.scheduleCLine, PERSONAL_LINE)).get()?.id ?? null;
-  return { ytd, month, ytdPnl, monthPnl, aging, overdue, drafts, activity: recentActivity(db), personalCategoryId };
+    (await db.select({ id: expenseCategories.id }).from(expenseCategories).where(eq(expenseCategories.scheduleCLine, PERSONAL_LINE)).get())?.id ?? null;
+  return { ytd, month, ytdPnl, monthPnl, aging, overdue, drafts, activity: await recentActivity(db), personalCategoryId };
 }

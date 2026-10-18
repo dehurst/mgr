@@ -1,4 +1,4 @@
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import { ne } from "drizzle-orm";
 import { DEFAULT_CATEGORIES, PERSONAL_LINE } from "@/lib/schedule-c";
 import * as schema from "./schema";
@@ -27,9 +27,10 @@ Thank you,
  * Idempotent. Creates the settings row if missing, and seeds expense categories only when the
  * table is empty (so renamed/archived categories are never re-added).
  */
-export function ensureDefaults(db: BetterSQLite3Database<typeof schema>): void {
-  db.transaction((tx) => {
-    tx.insert(schema.businessSettings)
+export async function ensureDefaults(db: LibSQLDatabase<typeof schema>): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(schema.businessSettings)
       .values({
         id: 1,
         invoiceEmailSubject: DEFAULT_INVOICE_EMAIL_SUBJECT,
@@ -41,14 +42,15 @@ export function ensureDefaults(db: BetterSQLite3Database<typeof schema>): void {
       .run();
 
     // The personal category is added by a migration, so ignore it when deciding whether to seed.
-    const anyCategory = tx
+    const anyCategory = await tx
       .select({ id: schema.expenseCategories.id })
       .from(schema.expenseCategories)
       .where(ne(schema.expenseCategories.scheduleCLine, PERSONAL_LINE))
       .limit(1)
       .get();
     if (!anyCategory) {
-      tx.insert(schema.expenseCategories)
+      await tx
+        .insert(schema.expenseCategories)
         .values(DEFAULT_CATEGORIES.map((c) => ({ name: c.name, scheduleCLine: c.scheduleCLine })))
         .run();
     }

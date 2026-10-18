@@ -17,7 +17,7 @@ export default async function TaxSummaryPage({ searchParams }: PageProps<"/repor
   // Before April, you're most likely preparing last year's return.
   const defaultYear = Number(today().slice(5, 7)) <= 4 ? thisYear - 1 : thisYear;
   const year = Number(sp.year) >= 2000 && Number(sp.year) <= thisYear ? Number(sp.year) : defaultYear;
-  const r = taxReport(getDb(), year);
+  const r = await taxReport(await getDb(), year);
   const years = Array.from({ length: 6 }, (_, i) => thisYear - i);
 
   return (
@@ -25,7 +25,7 @@ export default async function TaxSummaryPage({ searchParams }: PageProps<"/repor
       <ReportHeader
         title={`Schedule C summary · ${year}`}
         period={`Tax year ${year} (Jan 1 – Dec 31) · cash basis`}
-        businessName={getSettings().businessName}
+        businessName={(await getSettings()).businessName}
         csvHref={`/reports/csv?report=tax&year=${year}`}
       />
       <div className="grid gap-6">
@@ -97,7 +97,7 @@ export default async function TaxSummaryPage({ searchParams }: PageProps<"/repor
   );
 }
 
-function LineRows({ line: l, year }: { line: ReturnType<typeof taxReport>["lines"][number]; year: number }) {
+function LineRows({ line: l, year }: { line: Awaited<ReturnType<typeof taxReport>>["lines"][number]; year: number }) {
   return (
     <>
       <TableRow>

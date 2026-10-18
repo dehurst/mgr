@@ -7,7 +7,7 @@ import { mimeForPath, resolveUpload } from "@/lib/uploads";
 // GET /expenses/:id/receipt             -> shown inline (the receipt viewer)
 // GET /expenses/:id/receipt?download=1  -> saved as "Receipt <date> <vendor> <amount>.<ext>"
 export async function GET(req: Request, ctx: RouteContext<"/expenses/[id]/receipt">) {
-  const expense = getExpense(getDb(), Number((await ctx.params).id));
+  const expense = await getExpense(await getDb(), Number((await ctx.params).id));
   const abs = expense?.receiptPath ? resolveUpload(expense.receiptPath) : null;
   if (!expense?.receiptPath || !abs) return new Response("Not found", { status: 404 });
   try {

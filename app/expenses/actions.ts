@@ -24,12 +24,12 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
   });
   if (!parsed.ok) return { ok: false, errors: parsed.errors, message: "Please fix the highlighted fields." };
 
-  const db = getDb();
-  const existing = id ? getExpense(db, id) : undefined;
+  const db = await getDb();
+  const existing = id ? await getExpense(db, id) : undefined;
   if (id && !existing) return { ok: false, message: "Expense not found." };
-  const catError = checkCategory(db, parsed.input.categoryId, existing?.categoryId);
+  const catError = await checkCategory(db, parsed.input.categoryId, existing?.categoryId);
   if (catError) return { ok: false, errors: { categoryId: catError } };
-  const payeeError = checkPayee(db, parsed.input.payeeId, existing?.payeeId);
+  const payeeError = await checkPayee(db, parsed.input.payeeId, existing?.payeeId);
   if (payeeError) return { ok: false, errors: { payeeId: payeeError } };
 
   let receiptPath = existing?.receiptPath ?? null;
@@ -43,10 +43,10 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
   }
 
   if (existing) {
-    db.update(expenses).set({ ...parsed.input, receiptPath }).where(eq(expenses.id, existing.id)).run();
+    await db.update(expenses).set({ ...parsed.input, receiptPath }).where(eq(expenses.id, existing.id)).run();
     if (existing.receiptPath && existing.receiptPath !== receiptPath) await deleteUpload(existing.receiptPath);
   } else {
-    db.insert(expenses).values({ ...parsed.input, receiptPath }).run();
+    await db.insert(expenses).values({ ...parsed.input, receiptPath }).run();
   }
   revalidatePath("/", "layout");
 
@@ -63,10 +63,10 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
 }
 
 export async function deleteExpense(id: number): Promise<string | void> {
-  const db = getDb();
-  const existing = getExpense(db, id);
+  const db = await getDb();
+  const existing = await getExpense(db, id);
   if (!existing) return "Expense not found.";
-  db.delete(expenses).where(eq(expenses.id, id)).run();
+  await db.delete(expenses).where(eq(expenses.id, id)).run();
   await deleteUpload(existing.receiptPath);
   revalidatePath("/", "layout");
   redirect("/expenses");

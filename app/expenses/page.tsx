@@ -22,14 +22,14 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
   const sp = await searchParams;
   const range = resolveRange(sp, today());
   const categoryId = Number(sp.category) || undefined;
-  const db = getDb();
+  const db = await getDb();
   // Filter dropdown includes archived categories, since old expenses may use them.
-  const categories = db.select({ id: expenseCategories.id, name: expenseCategories.name }).from(expenseCategories).orderBy(asc(expenseCategories.name)).all();
-  const { rows, totalCents, personalCents } = listExpenses(db, { range, categoryId });
-  const hasActiveCategories = categoryOptions(db).length > 0;
+  const categories = await db.select({ id: expenseCategories.id, name: expenseCategories.name }).from(expenseCategories).orderBy(asc(expenseCategories.name)).all();
+  const { rows, totalCents, personalCents } = await listExpenses(db, { range, categoryId });
+  const hasActiveCategories = (await categoryOptions(db)).length > 0;
   // The chart always shows the whole calendar year of the selected period's end date.
   const chartYear = Number(range.to.slice(0, 4));
-  const months = expensesByMonth(loadExpenses(db, { from: `${chartYear}-01-01`, to: `${chartYear}-12-31` }), chartYear);
+  const months = expensesByMonth(await loadExpenses(db, { from: `${chartYear}-01-01`, to: `${chartYear}-12-31` }), chartYear);
   const yearBusiness = months.reduce((s, m) => s + m.businessCents, 0);
   const yearPersonal = months.reduce((s, m) => s + m.personalCents, 0);
 

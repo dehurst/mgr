@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader }
 import { buttonVariants } from "@/components/ui/button";
 import { AddCategoryForm, CategoryRow } from "./category-forms";
 
-export default function CategoriesPage() {
-  const db = getDb();
-  const rows = db
+export default async function CategoriesPage() {
+  const db = await getDb();
+  const rows = await db
     .select({
       id: expenseCategories.id,
       name: expenseCategories.name,

@@ -11,10 +11,10 @@ import { getSettings } from "@/lib/settings";
 
 const KIND_LABEL = { payment: "Payment", income: "Income", expense: "Expense", sent: "Invoice", created: "Invoice" } as const;
 
-export default function DashboardPage() {
-  const s = getSettings();
+export default async function DashboardPage() {
+  const s = await getSettings();
   const now = today();
-  const d = dashboardData(getDb(), now);
+  const d = await dashboardData(await getDb(), now);
   const setupMissing = [
     !s.businessName && "business name",
     !s.address && "address",
