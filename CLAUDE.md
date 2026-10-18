@@ -6,8 +6,9 @@ Single-user bookkeeping for a one-person business, hosted on Vercel (Turso + pri
 Google sign-in for one address) or run locally on the owner's Mac. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phases 1–6 done, plus web hosting** (libSQL/Turso, Blob storage, Google sign-in, daily
-> backups). The owner's move from the Mac to Vercel follows README "Moving it online".
+> Status: **Phases 1–6 done, plus web hosting.** Live at https://ledger-kohl-two-36.vercel.app
+> (Turso `ledger`, Blob store `ledger-receipts`). The owner's books were moved with `cloud:push` on
+> 2026-10-18; the online version is the system of record and the Mac copy is frozen.
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
 backfilled by hand. Invoice numbering continues QBO's sequence (set "Next number" in Settings).
@@ -169,7 +170,8 @@ npm run cloud:push     # one-time: copy DATABASE_PATH + uploads to Turso/Blob fr
 ## Environment
 
 Mac (`.env.local`): `DATABASE_PATH`, `UPLOADS_DIR`. Vercel (project env vars): `DATABASE_URL` +
-`DATABASE_AUTH_TOKEN` (or `TURSO_*`), `BLOB_READ_WRITE_TOKEN` (set by connecting the store),
+`DATABASE_AUTH_TOKEN` (or `TURSO_*`), `BLOB_STORE_ID` (set by connecting the store; auth is
+Vercel OIDC, the read-write token was revoked after `cloud:push`),
 `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ALLOWED_EMAIL`, `CRON_SECRET`. See `.env.example`.
 
 ## Hosting (Vercel)

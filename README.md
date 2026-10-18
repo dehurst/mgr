@@ -92,10 +92,14 @@ Nothing changes for the Mac version until you switch. Steps, in order:
 5. **Copy your data up** from the Mac: `npm run update`, then create `.env.cloud` in the project
    folder with `DATABASE_URL=…`, `DATABASE_AUTH_TOKEN=…`, and `BLOB_READ_WRITE_TOKEN=…` (Vercel →
    Storage → your Blob store → `.env.local` tab), and run `npm run cloud:push`. It checks that every
-   table matches before it says Done. Delete `.env.cloud` afterward.
+   table matches before it says Done. Delete `.env.cloud` afterward, then **Revoke Token** on the
+   Blob store: the app connects with Vercel's short-lived OIDC tokens (`BLOB_STORE_ID`), so the
+   long-lived read-write key is only needed for this copy.
 6. **Switch over.** From now on use only the online version (two copies would drift apart). On your
-   phone, open the address and Share → Add to Home Screen. After a week or so, turn off the Mac
-   version: `npm run service:uninstall`.
+   phone, open the address and Share → Add to Home Screen. Turn off the Mac version so nothing gets
+   entered there by mistake: `npm run service:uninstall` and
+   `/Applications/Tailscale.app/Contents/MacOS/Tailscale serve reset`. `data/ledger.db` stays as a
+   frozen copy.
 
 Online, a backup of the whole database is saved every day (newest 30 kept), and Settings →
 Download backup gives you a copy anytime. Turso's free plan archives a database after 10 idle days;
