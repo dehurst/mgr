@@ -186,6 +186,18 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 - npm 11 blocks dependency install scripts unless listed in `package.json` `allowScripts`. When a
   dependency with an install script changes version, add the new `name@version` there.
 
+## Sign-in
+
+- Google sign-in via Auth.js (`next-auth@5`, `auth.ts`, JWT cookie sessions, no DB tables). Only
+  `ALLOWED_EMAIL` (comma-separated) gets in: checked in the `signIn` callback and again on every
+  request. Settings: `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ALLOWED_EMAIL`.
+- Required on Vercel (`VERCEL` is set: fails closed if settings are missing) and wherever
+  `AUTH_GOOGLE_ID` is set; off on the Mac otherwise (`lib/auth-config.ts` `authRequired`).
+- The lock that counts is `getDb()` -> `requireUser()` (`lib/require-user.ts`): nothing reads the
+  books without a session. `proxy.ts` (Next 16's middleware) only redirects early. Routes that
+  don't use the DB (`app/files`) call `requireUser()` themselves. Scheduled jobs use
+  `getDbForSystemJob()` and authenticate with `CRON_SECRET`.
+
 ## Next.js 16 notes (read AGENTS.md)
 
 - Root layout sets `dynamic = "force-dynamic"`: every page reads the database, so without it pages
@@ -210,7 +222,7 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 - Keep dependencies minimal. Ask before adding a runtime dependency not listed above.
 - Every phase ends runnable, with click-through test steps.
 - Any change to money math or reports needs a test, including date-boundary cases.
-- Out of scope: auth, multi-user, bank feeds, CSV import, online payments, payroll, inventory,
+- Out of scope: multi-user, bank feeds, CSV import, online payments, payroll, inventory,
   sales tax, multi-currency, double entry, estimates, mileage.
 
 ## Build phases

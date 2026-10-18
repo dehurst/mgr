@@ -64,7 +64,7 @@ export async function openConfiguredDb(): Promise<{ db: Db; label: string; local
 // deploy build, so app instances never race each other to migrate.
 const g = globalThis as unknown as { __ledgerDb?: Promise<Db> };
 
-export function getDb(): Promise<Db> {
+function connection(): Promise<Db> {
   g.__ledgerDb ??= (async () => {
     const { url, authToken } = databaseUrl();
     if (isLocalUrl(url)) return openDb(url.slice("file:".length));
@@ -74,4 +74,17 @@ export function getDb(): Promise<Db> {
     throw e;
   });
   return g.__ledgerDb;
+}
+
+/** The app's database, for the signed-in owner only: no session, no data (see requireUser). */
+export async function getDb(): Promise<Db> {
+  // Imported here so CLI scripts that use openDb() don't load the sign-in code.
+  const { requireUser } = await import("@/lib/require-user");
+  await requireUser();
+  return connection();
+}
+
+/** For scheduled jobs that authenticate another way (the backup cron's CRON_SECRET). */
+export function getDbForSystemJob(): Promise<Db> {
+  return connection();
 }

@@ -15,7 +15,7 @@ const LINKS = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function Nav() {
+export function Nav({ signOut }: { signOut?: () => Promise<void> }) {
   const pathname = usePathname();
   return (
     // Phones: a sticky top bar with a horizontally scrolling menu. md and up: the sidebar.
@@ -38,6 +38,15 @@ export function Nav() {
             </li>
           );
         })}
+        {signOut && (
+          <li>
+            <form action={signOut}>
+              <button type="submit" className="block w-full whitespace-nowrap rounded-md px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-accent">
+                Sign out
+              </button>
+            </form>
+          </li>
+        )}
       </ul>
     </nav>
   );
