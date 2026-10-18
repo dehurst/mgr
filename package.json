@@ -21,7 +21,8 @@
     "update": "sh scripts/update.sh",
     "db:seed": "tsx scripts/seed.ts",
     "db:wipe": "tsx scripts/wipe.ts",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "tsx scripts/demo.ts",
+    "cloud:push": "tsx scripts/cloud-push.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

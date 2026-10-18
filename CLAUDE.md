@@ -2,11 +2,12 @@
 
 # Ledger — personal bookkeeping app
 
-Local-only, single-user bookkeeping for a one-person business. Replaces QuickBooks Online for:
+Single-user bookkeeping for a one-person business, hosted on Vercel (Turso + private Vercel Blob,
+Google sign-in for one address) or run locally on the owner's Mac. Replaces QuickBooks Online for:
 expenses, invoices, client payments (Venmo/check, recorded by hand), and tax-time reports.
 
-> Status: **Phase 6 mostly done** (everything except backup). Commands marked *(Phase N)* don't
-> exist yet.
+> Status: **Phases 1–6 done, plus web hosting** (libSQL/Turso, Blob storage, Google sign-in, daily
+> backups). The owner's move from the Mac to Vercel follows README "Moving it online".
 
 **Cutover decision:** the app is the system of record for all of 2026. Expenses from Jan 1, 2026 are
 backfilled by hand. Invoice numbering continues QBO's sequence (set "Next number" in Settings).
@@ -105,6 +106,9 @@ lib/reports/         data.ts loads plain rows (the only DB access); pnl/expenses
 lib/dashboard.ts     dashboard numbers + recent activity
 lib/csv.ts           CSV serialization
 lib/export.ts        "Export all data": every table as CSV in a zip (fflate), served by app/export
+lib/backup.ts        backup zip (standalone SQLite + CSVs), copyAllRows (also used by cloud:push), cron auth
+lib/uploads.ts       receipt/logo storage: local folder or private Vercel Blob
+lib/auth-config.ts   who may sign in (pure); lib/require-user.ts guards getDb(); auth.ts = Auth.js
 db/schema.ts         Drizzle schema
 db/index.ts          connection: getDb() (cached, async), openDb(file) for tests/scripts
 db/seed.ts           demo data
@@ -159,16 +163,25 @@ npm run db:migrate     # apply migrations (also runs at startup)
 npm run demo           # fresh data/demo.db + data/demo-uploads, served on :4748 with a banner
 npm run db:seed        # seed demo data into DATABASE_PATH (refuses if any data exists)
 npm run db:wipe        # erase DATABASE_PATH's records (type the filename; saves a .before-wipe copy)
-npm run backup         # (Phase 6) same as the Backup button: zip db + uploads into BACKUP_DIR
+npm run cloud:push     # one-time: copy DATABASE_PATH + uploads to Turso/Blob from .env.cloud; verifies
 ```
 
-## Environment (`.env.local`)
+## Environment
 
-```
-DATABASE_PATH=./data/ledger.db
-UPLOADS_DIR=./uploads
-BACKUP_DIR=/path/to/cloud-synced/folder
-```
+Mac (`.env.local`): `DATABASE_PATH`, `UPLOADS_DIR`. Vercel (project env vars): `DATABASE_URL` +
+`DATABASE_AUTH_TOKEN` (or `TURSO_*`), `BLOB_READ_WRITE_TOKEN` (set by connecting the store),
+`AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ALLOWED_EMAIL`, `CRON_SECRET`. See `.env.example`.
+
+## Hosting (Vercel)
+
+- `vercel.json`: build runs `npm run db:migrate` (migrates Turso) before `next build`; a daily cron
+  hits `/api/cron/backup` (`CRON_SECRET` bearer), which saves `backups/ledger-<date>.zip` (standalone
+  SQLite file + CSVs, `lib/backup.ts`) to private Blob storage and keeps the newest 30. It also keeps
+  Turso's free tier from archiving the database after 10 idle days. Settings → Download backup
+  (`/backup`) builds the same zip on demand.
+- Vercel function request/response bodies max out at 4.5 MB: uploads are capped at 4 MB, and
+  downloads (backup, export, PDFs) are small because receipts aren't bundled.
+- Hobby plan is "non-commercial"; the owner accepted that gray area. Pro ($20/mo) is the fallback.
 
 ## Running day to day
 
@@ -235,5 +248,6 @@ BACKUP_DIR=/path/to/cloud-synced/folder
 5. ✅ Dashboard + reports (P&L with prior-period compare, expense report with drill-down, A/R aging,
    income by client, Schedule C summary) + CSV (`/reports/csv?report=…`) and print-to-PDF.
    Later: payees + 1099-NEC summary (`/reports/1099`, CSV `report=1099`) and recipient-copy PDFs.
-6. Full CSV export (Settings → Export all data), demo + wipe, README, error/404 pages: done.
-   Still to do: Backup button + `npm run backup` (owner deferred; Google Drive folder later).
+6. ✅ Full CSV export, demo + wipe, README, error/404 pages, backups (daily online + Download backup).
+7. ✅ Web hosting: libSQL/Turso, private Blob storage, Google sign-in (one address), Vercel config,
+   `cloud:push` for the one-time move.

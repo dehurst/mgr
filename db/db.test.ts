@@ -55,3 +55,12 @@ describe("database bootstrap", () => {
     await expect(db.delete(s.invoices).where(eq(s.invoices.id, inv.id)).run()).rejects.toThrow(); // has payments
   });
 });
+
+describe("databaseUrl", () => {
+  it("uses Turso when configured (either variable name), else the local file", async () => {
+    const { databaseUrl } = await import("./index");
+    expect(databaseUrl({ DATABASE_URL: "libsql://a.turso.io", DATABASE_AUTH_TOKEN: "t" })).toEqual({ url: "libsql://a.turso.io", authToken: "t" });
+    expect(databaseUrl({ TURSO_DATABASE_URL: "libsql://b.turso.io", TURSO_AUTH_TOKEN: "u" })).toEqual({ url: "libsql://b.turso.io", authToken: "u" });
+    expect(databaseUrl({}).url).toMatch(/^file:.*ledger\.db$/);
+  });
+});

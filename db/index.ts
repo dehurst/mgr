@@ -16,9 +16,13 @@ export function databasePath(): string {
   return path.resolve(/*turbopackIgnore: true*/ process.env.DATABASE_PATH ?? "./data/ledger.db");
 }
 
-/** DATABASE_URL (+ DATABASE_AUTH_TOKEN) for Turso; otherwise the local file at DATABASE_PATH. */
-export function databaseUrl(): { url: string; authToken?: string } {
-  if (process.env.DATABASE_URL) return { url: process.env.DATABASE_URL, authToken: process.env.DATABASE_AUTH_TOKEN || undefined };
+/**
+ * Turso via DATABASE_URL + DATABASE_AUTH_TOKEN (or the TURSO_* names Vercel's Turso integration
+ * sets); otherwise the local file at DATABASE_PATH.
+ */
+export function databaseUrl(env: Record<string, string | undefined> = process.env): { url: string; authToken?: string } {
+  const url = env.DATABASE_URL || env.TURSO_DATABASE_URL;
+  if (url) return { url, authToken: env.DATABASE_AUTH_TOKEN || env.TURSO_AUTH_TOKEN || undefined };
   return { url: `file:${databasePath()}` };
 }
 
