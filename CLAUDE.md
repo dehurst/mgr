@@ -103,7 +103,7 @@ lib/other-income.ts  other income validation + list
 lib/payees.ts        payee (1099 contractor) validation, list with yearly 1099 totals, delete rules
 lib/range.ts         ?range=preset or ?from&to -> {from,to}; used with components/range-filter.tsx
 lib/reports/         data.ts loads plain rows (the only DB access); pnl/expenses/aging/
-                     income-by-client/tax/form-1099 are pure; index.ts builds each report + its CSV table
+                     income-by-client/tax/form-1099/personal are pure; index.ts builds each report + CSV
 lib/dashboard.ts     dashboard numbers + recent activity
 lib/csv.ts           CSV serialization
 lib/export.ts        "Export all data": every table as CSV in a zip (fflate), served by app/export
@@ -254,7 +254,9 @@ Vercel OIDC, the read-write token was revoked after `cloud:push`),
 4. ✅ Expenses (CRUD, receipts, date-range + category filters, "save and add another") + other income.
 5. ✅ Dashboard + reports (P&L with prior-period compare, expense report with drill-down, A/R aging,
    income by client, Schedule C summary) + CSV (`/reports/csv?report=…`) and print-to-PDF.
-   Later: payees + 1099-NEC summary (`/reports/1099`, CSV `report=1099`) and recipient-copy PDFs.
+   Later: payees + 1099-NEC summary (`/reports/1099`, CSV `report=1099`) and recipient-copy PDFs;
+   personal spending (`/reports/personal`, CSV `report=personal`): personal category + personal
+   shares of mixed-use expenses, by vendor/source/month; its total equals every report's personal figure.
 6. ✅ Full CSV export, demo + wipe, README, error/404 pages, backups (daily online + Download backup).
 7. ✅ Web hosting: libSQL/Turso, private Blob storage, Google sign-in (one address), Vercel config,
    `cloud:push` for the one-time move.

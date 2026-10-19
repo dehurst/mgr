@@ -10,6 +10,7 @@ import { loadExpenses, loadIncome } from "./data";
 import { axisTicks, expenseReport, expensesByMonth } from "./expenses";
 import { incomeByClient, NO_CLIENT } from "./income-by-client";
 import { computePnl } from "./pnl";
+import { personalSpending } from "./personal";
 import { halfCents, taxSummary } from "./tax";
 
 let db: Db;
@@ -353,5 +354,37 @@ describe("refunds (negative expenses)", () => {
     expect(halfCents(101)).toBe(51);
     expect(halfCents(-101)).toBe(-51);
     expect(halfCents(-100)).toBe(-50);
+  });
+});
+
+describe("personal spending report", () => {
+  it("adds the personal category and personal shares of mixed-use expenses, matching every other report", async () => {
+    const personalCat = (await db.select().from(expenseCategories).where(eq(expenseCategories.scheduleCLine, "personal")).get())!;
+    cat[personalCat.name] = personalCat.id;
+    await expense("2025-12-31", 99_00, personalCat.name, "Target"); // out of range
+    await expense("2026-01-01", 40_00, personalCat.name, "Target");
+    await expense("2026-02-10", 25_00, personalCat.name, "target "); // same vendor, different spelling
+    await expense("2026-02-15", -5_00, personalCat.name, "Target"); // a personal refund
+    await expense("2026-02-20", 197_29, "Phone & internet", "Verizon", 40); // 60% personal = 118.37
+    await expense("2026-03-01", 80_00, "Supplies", "Staples"); // all business: not here
+    await expense("2026-12-31", 10_00, personalCat.name, "Amazon");
+    const rows = await loadExpenses(db, Y2026);
+    const p = personalSpending(rows);
+
+    expect(p.totalCents).toBe(40_00 + 25_00 - 5_00 + 118_37 + 10_00);
+    expect(p.totalCents).toBe(expenseReport(rows).personalCents);
+    expect(p.totalCents).toBe(computePnl([], rows).personalCents);
+    expect(p.items.map((i) => i.vendor)).not.toContain("Staples");
+    expect(p.items[0].date).toBe("2026-12-31"); // newest first
+
+    expect(p.byVendor[0]).toMatchObject({ vendor: "Verizon", cents: 118_37 });
+    expect(p.byVendor.find((v) => v.vendor === "Target")).toMatchObject({ cents: 60_00, count: 3 });
+    expect(p.bySource[0]).toMatchObject({ fullyPersonal: true, cents: 70_00 });
+    expect(p.bySource[1]).toMatchObject({ name: "Phone & internet", fullyPersonal: false, cents: 118_37 });
+    expect(p.byMonth).toEqual([
+      { month: "2026-01", cents: 40_00 },
+      { month: "2026-02", cents: 20_00 + 118_37 },
+      { month: "2026-12", cents: 10_00 },
+    ]);
   });
 });

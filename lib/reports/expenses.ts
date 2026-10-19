@@ -16,13 +16,17 @@ export function expensesByCategory(rows: ExpenseRow[]): CategoryTotal[] {
   return [...map.values()].sort((a, b) => b.cents - a.cents || a.name.localeCompare(b.name));
 }
 
-/** Vendors are grouped case-insensitively; the most common spelling is shown. */
+/** Business share per vendor. Vendors are grouped case-insensitively; the most common spelling is shown. */
 export function expensesByVendor(rows: ExpenseRow[]): VendorTotal[] {
+  return totalsByVendor(rows, (r) => splitExpense(r).businessCents);
+}
+
+export function totalsByVendor(rows: ExpenseRow[], cents: (r: ExpenseRow) => number): VendorTotal[] {
   const map = new Map<string, VendorTotal & { spellings: Map<string, number> }>();
   for (const r of rows) {
     const key = r.vendor.trim().toLowerCase();
     const t = map.get(key) ?? { vendor: r.vendor.trim(), cents: 0, count: 0, spellings: new Map() };
-    t.cents += splitExpense(r).businessCents;
+    t.cents += cents(r);
     t.count++;
     t.spellings.set(r.vendor.trim(), (t.spellings.get(r.vendor.trim()) ?? 0) + 1);
     map.set(key, t);

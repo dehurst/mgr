@@ -11,13 +11,15 @@ import {
   form1099Report,
   incomeByClientCsv,
   incomeByClientReport,
+  personalCsv,
+  personalReport,
   pnlCsv,
   pnlReport,
   taxCsv,
   taxReport,
 } from "@/lib/reports";
 
-// GET /reports/csv?report=pnl|expenses|aging|income-by-client|tax|1099&range=…|from=…&to=…|year=…
+// GET /reports/csv?report=pnl|expenses|personal|aging|income-by-client|tax|1099&range=…|from=…&to=…|year=…
 export async function GET(req: Request) {
   const sp = Object.fromEntries(new URL(req.url).searchParams);
   const db = await getDb();
@@ -28,6 +30,8 @@ export async function GET(req: Request) {
       return csvResponse(`profit-and-loss_${tag}.csv`, pnlCsv(await pnlReport(db, range, sp.compare === "1")));
     case "expenses":
       return csvResponse(`expenses_${tag}.csv`, expensesCsv(await expensesReportData(db, range)));
+    case "personal":
+      return csvResponse(`personal-spending_${tag}.csv`, personalCsv(await personalReport(db, range)));
     case "aging":
       return csvResponse(`ar-aging_${today()}.csv`, agingCsv(await agingReport(db, today())));
     case "income-by-client":

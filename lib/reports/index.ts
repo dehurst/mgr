@@ -11,6 +11,7 @@ import { FORM_1099_STATUS_LABELS, form1099Rows, maskedTin, threshold1099 } from 
 import { expenseReport } from "./expenses";
 import { incomeByClient } from "./income-by-client";
 import { computePnl, type Pnl } from "./pnl";
+import { personalSpending } from "./personal";
 import { taxSummary } from "./tax";
 
 const $ = centsToInput;
@@ -102,6 +103,31 @@ export function form1099Csv(r: Awaited<ReturnType<typeof form1099Report>>): Cell
       FORM_1099_STATUS_LABELS[x.status],
       x.missing.join(", "),
     ]),
+  ];
+}
+
+export async function personalReport(db: Db, range: DateRange) {
+  const rows = await loadExpenses(db, range);
+  return { range, ...personalSpending(rows), businessCents: expenseReport(rows).totalCents };
+}
+
+export function personalCsv(r: Awaited<ReturnType<typeof personalReport>>): Cell[][] {
+  return [
+    [`Personal spending, ${formatDate(r.range.from)} – ${formatDate(r.range.to)}`],
+    ["Personal-category purchases plus the personal share of mixed-use expenses. Not business expenses."],
+    [],
+    ["Date", "Vendor", "Category", "Description", "Amount paid", "Business %", "Personal amount"],
+    ...r.items.map((e) => [e.date, e.vendor, e.categoryName, e.description, $(e.amountCents), e.scheduleCLine === "personal" ? 0 : e.businessPct, $(e.personalCents)]),
+    ["", "", "", "Total personal spending", "", "", $(r.totalCents)],
+    [],
+    ["By source", "", "Count", "Amount"],
+    ...r.bySource.map((x) => [x.fullyPersonal ? x.name : `${x.name} (personal share)`, "", x.count, $(x.cents)]),
+    [],
+    ["By vendor", "", "Count", "Amount"],
+    ...r.byVendor.map((v) => [v.vendor, "", v.count, $(v.cents)]),
+    [],
+    ["By month", "", "", "Amount"],
+    ...r.byMonth.map((m) => [m.month, "", "", $(m.cents)]),
   ];
 }
 

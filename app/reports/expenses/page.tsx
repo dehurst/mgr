@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RangeFilter } from "@/components/range-filter";
+import { TotalsTable as Totals } from "@/components/totals-table";
 import { ReportHeader } from "@/components/report-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/misc";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -140,41 +141,5 @@ export default async function ExpenseReportPage({ searchParams }: PageProps<"/re
         </Card>
       </div>
     </>
-  );
-}
-
-function Totals({
-  rows,
-  totalCents,
-}: {
-  rows: { key: string; label: string; count: number; cents: number; href: string }[];
-  totalCents: number;
-}) {
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Nothing yet.</p>;
-  return (
-    <Table>
-      <TableBody>
-        {rows.map((x) => (
-          <TableRow key={x.key}>
-            <TableCell>
-              <Link href={x.href} className="hover:underline">
-                {x.label}
-              </Link>
-              <span className="ml-2 text-xs text-muted-foreground">×{x.count}</span>
-            </TableCell>
-            <TableCell className="tabular w-20 text-right text-xs text-muted-foreground">
-              {totalCents ? `${Math.round((x.cents / totalCents) * 100)}%` : ""}
-            </TableCell>
-            <TableCell className="tabular text-right">{formatCents(x.cents)}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-      <TableFooter>
-        <TableRow>
-          <TableCell colSpan={2}>Total</TableCell>
-          <TableCell className="tabular text-right">{formatCents(totalCents)}</TableCell>
-        </TableRow>
-      </TableFooter>
-    </Table>
   );
 }

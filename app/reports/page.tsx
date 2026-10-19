@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader }
 const REPORTS = [
   { href: "/reports/pnl", title: "Profit & Loss", text: "Money in minus money out for any period, with an optional comparison to the prior period." },
   { href: "/reports/expenses", title: "Expense report", text: "Spending by category and by vendor. Click any row to see the transactions." },
+  { href: "/reports/personal", title: "Personal spending", text: "What went to personal use, by vendor, source, and month. Not part of your business numbers." },
   { href: "/reports/aging", title: "Accounts receivable aging", text: "Who owes you, and how late: current, 1–30, 31–60, 61–90, 90+ days." },
   { href: "/reports/income-by-client", title: "Income by client", text: "What each client paid you in a period." },
   { href: "/reports/tax", title: "Tax summary (Schedule C)", text: "Expenses rolled up by Schedule C line for a tax year. Hand this to your CPA." },
