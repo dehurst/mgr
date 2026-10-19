@@ -3,7 +3,10 @@ import type { Db } from "@/db";
 import { clients, EXPENSE_PAYMENT_METHODS, expenseCategories, expenses, payees, type ExpensePaymentMethod } from "@/db/schema";
 import { isValidDate, type DateRange, type DateStr } from "./dates";
 import type { FieldErrors } from "./form";
-import { parseCents, sumCents } from "./money";
+import type { Cell } from "./csv";
+import { centsToInput, parseCents, sumCents } from "./money";
+import { EXPENSE_METHOD_LABELS } from "./payment-methods";
+import { scheduleCLabel } from "./schedule-c";
 import { splitExpense } from "./reports/data";
 
 export { EXPENSE_METHOD_LABELS } from "./payment-methods";
@@ -90,10 +93,12 @@ export async function listExpenses(db: Db, f: ExpenseFilter) {
       clientId: expenses.clientId,
       clientName: clients.name,
       payeeId: expenses.payeeId,
+      payeeName: payees.name,
     })
     .from(expenses)
     .innerJoin(expenseCategories, eq(expenseCategories.id, expenses.categoryId))
     .leftJoin(clients, eq(clients.id, expenses.clientId))
+    .leftJoin(payees, eq(payees.id, expenses.payeeId))
     .where(
       and(
         gte(expenses.paidOn, f.range.from),
@@ -111,6 +116,40 @@ export async function listExpenses(db: Db, f: ExpenseFilter) {
     totalCents: sumCents(parts.map((p) => p.businessCents)),
     personalCents: sumCents(parts.map((p) => p.personalCents)),
   };
+}
+
+/**
+ * The Expenses page as a spreadsheet: the same rows (same dates and category filter) with each
+ * expense's business/personal split, and the page's business and personal totals at the bottom.
+ */
+export function expenseListCsv(list: Awaited<ReturnType<typeof listExpenses>>, title: string): Cell[][] {
+  const $ = centsToInput;
+  return [
+    [title],
+    [],
+    ["Date", "Vendor", "Category", "Schedule C", "Description", "Paid with", "Amount paid", "Business %", "Business amount", "Personal amount", "Payee (1099)", "Client", "Receipt"],
+    ...list.rows.map((r) => {
+      const split = splitExpense(r);
+      return [
+        r.paidOn,
+        r.vendor,
+        r.categoryName,
+        scheduleCLabel(r.scheduleCLine),
+        r.description,
+        EXPENSE_METHOD_LABELS[r.paymentMethod],
+        $(r.amountCents),
+        split.businessCents === 0 ? 0 : r.businessPct,
+        $(split.businessCents),
+        $(split.personalCents),
+        r.payeeName ?? "",
+        r.clientName ?? "",
+        r.receiptPath ? "yes" : "",
+      ];
+    }),
+    [],
+    ["Business expenses", "", "", "", "", "", "", "", $(list.totalCents)],
+    ["Personal (not a business expense)", "", "", "", "", "", "", "", "", $(list.personalCents)],
+  ];
 }
 
 export async function getExpense(db: Db, id: number) {

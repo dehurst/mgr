@@ -8,7 +8,7 @@ import { getDb } from "@/db";
 import { formatDate, today } from "@/lib/dates";
 import { categoryOptions, EXPENSE_METHOD_LABELS, listExpenses } from "@/lib/expenses";
 import { formatCents } from "@/lib/money";
-import { resolveRange } from "@/lib/range";
+import { rangeQuery, resolveRange } from "@/lib/range";
 import { PERSONAL_LINE } from "@/lib/schedule-c";
 import { expenseCategories } from "@/db/schema";
 import { asc } from "drizzle-orm";
@@ -39,11 +39,21 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
         title="Expenses"
         description={`${formatDate(range.from)} – ${formatDate(range.to)}`}
         actions={
-          hasActiveCategories && (
-            <Link href="/expenses/new" className={buttonVariants()}>
-              New expense
-            </Link>
-          )
+          <>
+            {rows.length > 0 && (
+              <a
+                href={`/expenses/csv?${rangeQuery(range)}${categoryId ? `&category=${categoryId}` : ""}`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Download CSV
+              </a>
+            )}
+            {hasActiveCategories && (
+              <Link href="/expenses/new" className={buttonVariants()}>
+                New expense
+              </Link>
+            )}
+          </>
         }
       />
       <Card className="mb-6">

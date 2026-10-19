@@ -2,7 +2,7 @@ import { eq, ne } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { openDb, type Db } from "@/db";
 import { clients, expenseCategories, expenses, otherIncome } from "@/db/schema";
-import { applyBusinessPctToCategory, categoryOptions, checkCategory, listExpenses, parseExpenseForm, recentVendors } from "./expenses";
+import { applyBusinessPctToCategory, categoryOptions, checkCategory, expenseListCsv, listExpenses, parseExpenseForm, recentVendors } from "./expenses";
 import { listOtherIncome, parseOtherIncomeForm } from "./other-income";
 
 let db: Db;
@@ -150,5 +150,30 @@ describe("other income", () => {
     const r = await listOtherIncome(db, { from: "2026-01-01", to: "2026-12-31" });
     expect(r.totalCents).toBe(100);
     expect(r.rows[0].clientName).toBe("Acme");
+  });
+});
+
+describe("expenseListCsv", () => {
+  it("exports the filtered rows with the split, and totals that match the page", async () => {
+    const personal = (await db.select().from(expenseCategories).where(eq(expenseCategories.scheduleCLine, "personal")).get())!.id;
+    await add("2026-02-01", 197_29, catA, "Verizon");
+    await db.update(expenses).set({ businessPct: 40 }).where(eq(expenses.vendor, "Verizon")).run();
+    await add("2026-02-02", 25_00, personal, "Target");
+    await add("2026-12-31", 10_00, catB, "Last day");
+    await add("2027-01-01", 99_00, catA, "Next year");
+    const list = await listExpenses(db, { range: { from: "2026-01-01", to: "2026-12-31" } });
+    const csv = expenseListCsv(list, "Expenses 2026");
+    const [, , header, ...rest] = csv;
+    expect(header.slice(6, 10)).toEqual(["Amount paid", "Business %", "Business amount", "Personal amount"]);
+    const body = rest.slice(0, list.rows.length);
+    expect(body.map((r) => r[1])).toEqual(["Last day", "Target", "Verizon"]); // Dec 31 in, Jan 1 out
+    expect(body.find((r) => r[1] === "Verizon")!.slice(6, 10)).toEqual(["197.29", 40, "78.92", "118.37"]);
+    expect(body.find((r) => r[1] === "Target")!.slice(6, 10)).toEqual(["25.00", 0, "0.00", "25.00"]);
+    // Each row's parts add back to what was paid, and the totals equal the page's.
+    for (const r of body) expect(Math.round(Number(r[8]) * 100) + Math.round(Number(r[9]) * 100)).toBe(Math.round(Number(r[6]) * 100));
+    expect(csv.at(-2)![8]).toBe("88.92");
+    expect(csv.at(-1)![9]).toBe("143.37");
+    expect(list.totalCents).toBe(88_92);
+    expect(list.personalCents).toBe(143_37);
   });
 });
