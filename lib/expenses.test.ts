@@ -44,6 +44,15 @@ describe("parseExpenseForm", () => {
     const r2 = parseExpenseForm({ ...raw, clientId: "3" });
     expect(r2.ok && r2.input.clientId).toBe(3);
   });
+  it("accepts refunds: the checkbox or a minus sign makes the amount negative", () => {
+    const box = parseExpenseForm({ ...raw, amount: "25.00", refund: "on" });
+    expect(box.ok && box.input.amountCents).toBe(-25_00);
+    const typed = parseExpenseForm({ ...raw, amount: "-25" });
+    expect(typed.ok && typed.input.amountCents).toBe(-25_00);
+    const both = parseExpenseForm({ ...raw, amount: "-25", refund: "on" });
+    expect(both.ok && both.input.amountCents).toBe(-25_00);
+    expect(parseExpenseForm({ ...raw, amount: "0", refund: "on" }).ok).toBe(false);
+  });
   it.each([
     [{ amount: "0" }, "amount"],
     [{ amount: "12.345" }, "amount"],

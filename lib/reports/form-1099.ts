@@ -66,7 +66,7 @@ export function form1099Rows(payeeList: Payee[], rows: PayeePaymentRow[], year: 
   return payeeList
     .map((payee) => {
       const mine = rows.filter((r) => r.payeeId === payee.id);
-      const business = mine.map((r) => ({ r, cents: splitExpense(r).businessCents })).filter((x) => x.cents > 0);
+      const business = mine.map((r) => ({ r, cents: splitExpense(r).businessCents })).filter((x) => x.cents !== 0); // refunds from the payee reduce box 1
       const reportableCents = sumCents(business.filter((x) => countsToward1099(x.r.paymentMethod)).map((x) => x.cents));
       const networkCents = sumCents(business.filter((x) => !countsToward1099(x.r.paymentMethod)).map((x) => x.cents));
       const status: Form1099Status =

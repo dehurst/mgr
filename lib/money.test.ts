@@ -154,3 +154,12 @@ describe("businessShareCents", () => {
     expect(() => businessShareCents(100, 12.5)).toThrow(RangeError);
   });
 });
+
+describe("businessShareCents with refunds", () => {
+  it("mirrors the purchase exactly, so a purchase and its refund cancel", () => {
+    for (const [a, p] of [[197_29, 40], [1, 50], [999_99, 7], [123_45, 100]]) {
+      expect(businessShareCents(-a, p)).toBe(-businessShareCents(a, p));
+    }
+    expect(businessShareCents(-197_29, 40)).toBe(-78_92);
+  });
+});

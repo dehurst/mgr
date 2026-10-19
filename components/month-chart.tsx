@@ -95,14 +95,14 @@ export function MonthChart({
           <div className="absolute inset-0 flex">
             {months.map((m, i) => {
               const total = m.businessCents + m.personalCents;
-              const pct = (shown(m) / top) * 100;
               const label = stacked
                 ? `${MONTHS[i]} ${year}: ${formatCents(m.businessCents)} business, ${formatCents(m.personalCents)} personal, ${formatCents(total)} total`
                 : `${MONTHS[i]} ${year}: ${formatCents(m.businessCents)} business`;
               const segments = [
                 { key: "business", cents: m.businessCents, color: BUSINESS },
                 ...(stacked ? [{ key: "personal", cents: m.personalCents, color: PERSONAL }] : []),
-              ].filter((s) => s.cents > 0);
+              ].filter((s) => s.cents > 0); // a month that's net refunds draws no bar; the tooltip has the numbers
+              const pct = (segments.reduce((sum, s) => sum + s.cents, 0) / top) * 100;
               return (
                 <div
                   key={m.month}

@@ -107,3 +107,11 @@ describe("maskedTin", () => {
     expect(maskedTin({ tinType: null, tinLast4: null })).toBe("");
   });
 });
+
+describe("1099 refunds", () => {
+  it("a refund from the payee reduces box 1", () => {
+    const [r] = form1099Rows([payee(1)], [pay(1, "2026-03-01", 2_500_00), pay(1, "2026-04-01", -600_00)], 2026);
+    expect(r.reportableCents).toBe(1_900_00);
+    expect(r.status).toBe("under_threshold");
+  });
+});

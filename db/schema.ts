@@ -202,7 +202,8 @@ export const expenses = sqliteTable(
   (t) => [
     index("expenses_paid_idx").on(t.paidOn),
     index("expenses_category_idx").on(t.categoryId),
-    check("expenses_positive", sql`${t.amountCents} > 0`),
+    // Negative = a refund. Zero is meaningless.
+    check("expenses_nonzero", sql`${t.amountCents} <> 0`),
     check("expenses_business_pct", sql`${t.businessPct} between 1 and 100`),
   ],
 );

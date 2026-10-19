@@ -114,9 +114,13 @@ export function ExpenseForm({
               name="amount"
               inputMode="decimal"
               placeholder="0.00"
-              defaultValue={expense ? centsToInput(expense.amountCents) : ""}
+              defaultValue={expense ? centsToInput(Math.abs(expense.amountCents)) : ""}
               required
             />
+            <label className="mt-1 flex items-center gap-2 text-sm">
+              <input type="checkbox" name="refund" defaultChecked={!!expense && expense.amountCents < 0} />
+              This is a refund (money back)
+            </label>
           </Field>
           <Field label="Category" htmlFor="categoryId" error={e.categoryId}>
             <Select id="categoryId" name="categoryId" value={categoryId} onChange={(ev) => changeCategory(ev.target.value)} required>

@@ -17,6 +17,7 @@ export const MEALS_LINE = "24b";
 
 /** Half of a cent amount, rounded half up (for the 50% meals limit). */
 export function halfCents(cents: number): number {
+  if (cents < 0) return -halfCents(-cents); // net refunds round the same way as spending
   return Math.floor((cents + 1) / 2);
 }
 

@@ -16,6 +16,7 @@ export async function saveExpense(id: number | null, _prev: ActionState, fd: For
     vendor: str(fd, "vendor"),
     categoryId: str(fd, "categoryId"),
     amount: str(fd, "amount"),
+    refund: str(fd, "refund"),
     paymentMethod: str(fd, "paymentMethod"),
     description: str(fd, "description"),
     clientId: str(fd, "clientId"),

@@ -321,3 +321,37 @@ describe("expenses by month", () => {
     expect(axisTicks(10000_00)).toEqual([0, 2500_00, 5000_00, 7500_00, 10000_00]);
   });
 });
+
+describe("refunds (negative expenses)", () => {
+  it("a purchase and its refund cancel to zero in the P&L, expense report, tax summary, and chart", async () => {
+    await expense("2026-03-01", 197_29, "Phone & internet", "Verizon", 40);
+    await expense("2026-03-20", -197_29, "Phone & internet", "Verizon", 40);
+    await expense("2026-04-01", 101_01, "Meals (50% deductible)", "Diner");
+    await expense("2026-04-02", -101_01, "Meals (50% deductible)", "Diner");
+    await expense("2026-05-01", 50_00, "Supplies");
+    const rows = await loadExpenses(db, Y2026);
+    expect(computePnl([], rows).expensesCents).toBe(50_00);
+    expect(computePnl([], rows).personalCents).toBe(0);
+    const report = expenseReport(rows);
+    expect(report.totalCents).toBe(50_00);
+    expect(report.personalCents).toBe(0);
+    expect(taxSummary([], rows).totalExpensesCents).toBe(50_00);
+    const months = expensesByMonth(rows, 2026);
+    expect(months[2]).toMatchObject({ businessCents: 0, personalCents: 0 });
+    expect(months[3]).toMatchObject({ businessCents: 0, personalCents: 0 });
+  });
+
+  it("a partial refund reduces the category; a refund dated Jan 1 belongs to the next year", async () => {
+    await expense("2026-12-15", 300_00, "Supplies");
+    await expense("2026-12-31", -100_00, "Supplies");
+    await expense("2027-01-01", -50_00, "Supplies");
+    expect(computePnl([], await loadExpenses(db, Y2026)).expensesCents).toBe(200_00);
+    expect(computePnl([], await loadExpenses(db, { from: "2027-01-01", to: "2027-12-31" })).expensesCents).toBe(-50_00);
+  });
+
+  it("halves meals symmetrically for a net refund", () => {
+    expect(halfCents(101)).toBe(51);
+    expect(halfCents(-101)).toBe(-51);
+    expect(halfCents(-100)).toBe(-50);
+  });
+});

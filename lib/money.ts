@@ -98,5 +98,7 @@ export function businessShareCents(amountCents: number, businessPct: number): nu
   assertCents(amountCents);
   if (!Number.isInteger(businessPct) || businessPct < 0 || businessPct > 100) throw new RangeError(`Bad percent: ${businessPct}`);
   if (businessPct === 100) return amountCents;
+  // A refund (negative) mirrors its purchase exactly, so the two cancel to the cent.
+  if (amountCents < 0) return -businessShareCents(-amountCents, businessPct);
   return Math.floor((amountCents * businessPct + 50) / 100);
 }

@@ -133,8 +133,11 @@ uploads/             receipts + logo (gitignored)
   reference, notes, `voided_at`. Rules in `lib/payments.ts`: no overpayment, no future dates, a
   payment on a draft marks it sent on the payment date, "un-send" only with no active payments.
   Manual `sent_at` is stored as noon UTC of the chosen date (`sentAtFor`).
-- `expenses`: `paid_on`, vendor, category, `amount_cents` (full amount paid), `business_pct`,
-  payment method, description, receipt path, optional client, optional payee, timestamps.
+- `expenses`: `paid_on`, vendor, category, `amount_cents` (full amount paid; **negative = a
+  refund**, entered with the form's "This is a refund" checkbox because phone keypads lack a minus
+  key; zero is rejected), `business_pct`, payment method, description, receipt path, optional
+  client, optional payee, timestamps. Rounding (`businessShareCents`, `halfCents`) mirrors for
+  negatives so a purchase and its refund cancel to the cent.
 - `payees`: 1099 contractors. Name (W-9 line 1), business name, email, address, tax
   classification, `is_attorney`, `tin_type` + `tin_last4` (never the full TIN), `w9_received_on`,
   notes, `archived_at`. Deletable only with no linked expenses; otherwise archive.
@@ -143,7 +146,9 @@ uploads/             receipts + logo (gitignored)
   `business_pct`, `archived_at`. Saving a category can apply its % to past expenses.
 - Migration 0003 is hand-written (`ADD COLUMN`): drizzle-kit's table rebuild would have failed on
   existing data. Check generated SQL before committing; prefer `ADD COLUMN` for new columns.
-  (0004_payees was generated as plain `CREATE TABLE` + `ADD COLUMN` and kept as is.)
+  (0004_payees was generated as plain `CREATE TABLE` + `ADD COLUMN` and kept as is. 0005 rebuilds
+  `expenses` to change its CHECK to `amount_cents <> 0`; the generated SQL was correct and was
+  verified on a real-data copy: same rows, sums, links.)
 - `other_income`: `received_on`, source, optional `client_id` (for the Jan–Sep 2026 QBO backfill:
   one entry per client per month), `amount_cents`, notes, `voided_at`. The UI hard-deletes; reports
   must still exclude `voided_at` rows.

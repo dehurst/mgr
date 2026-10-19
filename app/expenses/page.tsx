@@ -76,7 +76,7 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
           <MonthChart
             year={chartYear}
             months={months}
-            ticks={axisTicks(Math.max(...months.map((m) => m.businessCents + m.personalCents)))}
+            ticks={axisTicks(Math.max(...months.map((m) => Math.max(0, m.businessCents) + Math.max(0, m.personalCents))))}
             businessTicks={axisTicks(Math.max(...months.map((m) => m.businessCents)))}
           />
         </CardContent>
@@ -143,6 +143,7 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
                     </TableCell>
                     <TableCell className="tabular text-right">
                       {formatCents(r.amountCents)}
+                      {r.amountCents < 0 && <div className="text-xs font-normal text-muted-foreground">refund</div>}
                       {r.businessPct < 100 && r.scheduleCLine !== PERSONAL_LINE && (
                         <div className="text-xs font-normal text-muted-foreground">{r.businessPct}% business</div>
                       )}

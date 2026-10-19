@@ -24,15 +24,20 @@ export type ExpenseInput = {
 };
 
 export function parseExpenseForm(
-  raw: Record<"paidOn" | "vendor" | "categoryId" | "amount" | "paymentMethod" | "description" | "clientId" | "payeeId" | "businessPct", string>,
+  raw: Record<"paidOn" | "vendor" | "categoryId" | "amount" | "paymentMethod" | "description" | "clientId" | "payeeId" | "businessPct", string> & {
+    /** "on" when "This is a refund" is checked (phone keypads have no minus key). */
+    refund?: string;
+  },
 ): { ok: true; input: ExpenseInput } | { ok: false; errors: FieldErrors } {
   const errors: FieldErrors = {};
   if (!isValidDate(raw.paidOn)) errors.paidOn = "Enter a valid date.";
   if (!raw.vendor) errors.vendor = "Who did you pay?";
   const categoryId = Number(raw.categoryId);
   if (!Number.isSafeInteger(categoryId) || categoryId <= 0) errors.categoryId = "Pick a category.";
-  const amountCents = parseCents(raw.amount);
-  if (amountCents === null || amountCents <= 0) errors.amount = "Enter an amount greater than zero, like 49.99.";
+  // A refund is a negative expense: from the checkbox, or typed with a minus sign.
+  const parsed = parseCents(raw.amount);
+  const amountCents = parsed !== null && raw.refund === "on" ? -Math.abs(parsed) : parsed;
+  if (amountCents === null || amountCents === 0) errors.amount = "Enter an amount like 49.99, or -49.99 for a refund.";
   if (!(EXPENSE_PAYMENT_METHODS as readonly string[]).includes(raw.paymentMethod)) errors.paymentMethod = "Pick how you paid.";
   const clientId = raw.clientId ? Number(raw.clientId) : null;
   if (clientId !== null && (!Number.isSafeInteger(clientId) || clientId <= 0)) errors.clientId = "Pick a client or leave blank.";
