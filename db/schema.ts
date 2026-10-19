@@ -179,6 +179,13 @@ export const expenseCategories = sqliteTable(
   (t) => [check("categories_business_pct", sql`${t.businessPct} between 1 and 100`)],
 );
 
+/** One row per statement import, so a whole import can be reviewed or undone later. */
+export const expenseImports = sqliteTable("expense_imports", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  fileName: text("file_name").notNull().default(""),
+  ...timestamps,
+});
+
 export const expenses = sqliteTable(
   "expenses",
   {
@@ -197,6 +204,8 @@ export const expenses = sqliteTable(
     clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
     /** Set when this is a payment to a contractor; counts toward their 1099-NEC. */
     payeeId: integer("payee_id").references(() => payees.id, { onDelete: "restrict" }),
+    /** Set when the expense came from a statement import (see Expenses → Import). */
+    importId: integer("import_id").references(() => expenseImports.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [
@@ -235,4 +244,5 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type ExpenseCategory = typeof expenseCategories.$inferSelect;
 export type Expense = typeof expenses.$inferSelect;
+export type ExpenseImport = typeof expenseImports.$inferSelect;
 export type OtherIncome = typeof otherIncome.$inferSelect;

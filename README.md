@@ -17,6 +17,7 @@ in, so there's nothing to launch. On your phone, use your Tailscale address
 | Bill a client | Invoices → New invoice, then download the PDF and send it yourself |
 | Record a client's payment | Open the invoice → Record payment |
 | Log a business (or personal) expense | Expenses → New expense |
+| Add a whole statement at once | Expenses → Import (a CSV from your bank or card site) |
 | Pay a contractor | Payees → the person → Record a payment |
 | See how the year is going | Dashboard, or Reports → Profit & Loss |
 | Prepare taxes | Reports → Tax summary (Schedule C), and 1099-NEC summary in January |

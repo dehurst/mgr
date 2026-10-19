@@ -49,6 +49,11 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
               </a>
             )}
             {hasActiveCategories && (
+              <Link href="/expenses/import" className={buttonVariants({ variant: "outline" })}>
+                Import
+              </Link>
+            )}
+            {hasActiveCategories && (
               <Link href="/expenses/new" className={buttonVariants()}>
                 New expense
               </Link>

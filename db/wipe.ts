@@ -16,6 +16,7 @@ export async function wipeData(db: Db): Promise<void> {
       schema.invoices,
       schema.otherIncome,
       schema.expenses,
+      schema.expenseImports,
       schema.payees,
       schema.clients,
       schema.expenseCategories,

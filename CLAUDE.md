@@ -99,6 +99,8 @@ lib/clients.ts       client validation, totals (billed/paid/balance exclude draf
 lib/pdf/             @react-pdf invoice template (app/invoices/[id]/pdf) and 1099-NEC Copy B
                      (app/payees/[id]/1099?year=)
 lib/expenses.ts      expense validation, filtered list + total, archived-category rules
+lib/import.ts        statement CSV parsing + suggestions (pure, runs in the browser too)
+lib/expense-import.ts import context (past vendors, nearby expenses), saveImport (all-or-nothing), undo
 lib/other-income.ts  other income validation + list
 lib/payees.ts        payee (1099 contractor) validation, list with yearly 1099 totals, delete rules
 lib/range.ts         ?range=preset or ?from&to -> {from,to}; used with components/range-filter.tsx
@@ -149,6 +151,11 @@ uploads/             receipts + logo (gitignored)
   (0004_payees was generated as plain `CREATE TABLE` + `ADD COLUMN` and kept as is. 0005 rebuilds
   `expenses` to change its CHECK to `amount_cents <> 0`; the generated SQL was correct and was
   verified on a real-data copy: same rows, sums, links.)
+- `expense_imports` (id, `file_name`, timestamps) + `expenses.import_id`: Expenses → Import reads a
+  bank/card CSV in the browser (`lib/import.ts`: column + sign detection, vendor cleanup), the server
+  suggests category/business % from each vendor's most recent past expense, and unchecks card
+  payments/transfers, money in, and likely duplicates (same amount within 3 days). Saving is one
+  transaction; "Undo import" deletes that import's expenses. Migration 0006 is plain CREATE + ADD COLUMN.
 - `other_income`: `received_on`, source, optional `client_id` (for the Jan–Sep 2026 QBO backfill:
   one entry per client per month), `amount_cents`, notes, `voided_at`. The UI hard-deletes; reports
   must still exclude `voided_at` rows.
@@ -242,7 +249,7 @@ Vercel OIDC, the read-write token was revoked after `cloud:push`),
 - Keep dependencies minimal. Ask before adding a runtime dependency not listed above.
 - Every phase ends runnable, with click-through test steps.
 - Any change to money math or reports needs a test, including date-boundary cases.
-- Out of scope: multi-user, bank feeds, CSV import, online payments, payroll, inventory,
+- Out of scope: multi-user, bank feeds, online payments, payroll, inventory,
   sales tax, multi-currency, double entry, estimates, mileage.
 
 ## Build phases

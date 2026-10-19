@@ -22,6 +22,7 @@ export const TABLES_IN_ORDER = [
   schema.invoices,
   schema.invoiceLineItems,
   schema.payments,
+  schema.expenseImports,
   schema.expenses,
   schema.otherIncome,
 ] as const;
