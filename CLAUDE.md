@@ -206,7 +206,7 @@ Vercel OIDC, the read-write token was revoked after `cloud:push`),
 - Phone access is via **Tailscale Serve**, not by changing the bind address:
   `tailscale serve --bg 4747` proxies `https://<mac>.<tailnet>.ts.net` (tailnet-only, real TLS cert)
   to 127.0.0.1:4747. On macOS the CLI is `/Applications/Tailscale.app/Contents/MacOS/Tailscale`.
-  The Mac must be awake. The layout is responsive (top menu bar below `md`), form text is 16px on
+  The Mac must be awake. The layout is responsive (below `md`, a slim top bar with a hamburger button that opens a slide-in menu; a sidebar from `md` up), form text is 16px on
   phones so iOS doesn't zoom, and `apple-icon.png` + `appleWebApp` metadata support Add to Home Screen.
 - Keep the project outside `~/Documents` / `~/Desktop`: macOS privacy controls block background
   agents there. The owner's checkout is `~/Projects/ledger`.
