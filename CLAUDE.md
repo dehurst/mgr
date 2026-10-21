@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Ledger — personal bookkeeping app
+# Simple Ledger — personal bookkeeping app
 
 Single-user bookkeeping for a one-person business, hosted on Vercel (Turso + private Vercel Blob,
 Google sign-in for one address) or run locally on the owner's Mac. Replaces QuickBooks Online for:

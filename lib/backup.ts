@@ -80,7 +80,7 @@ export async function buildBackupZip(db: Db, today: DateStr, receiptPaths: strin
   files["stored-files.txt"] = strToU8(receiptPaths.join("\n") + "\n");
   files["README.txt"] = strToU8(
     [
-      `Ledger backup, ${today}`,
+      `Simple Ledger backup, ${today}`,
       "",
       "ledger.db  - the complete books as a SQLite database. To use it on the Mac, put it at",
       "             data/ledger.db. To restore the cloud database: turso db create <name> --from-file ledger.db",

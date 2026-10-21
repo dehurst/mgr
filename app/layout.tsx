@@ -9,10 +9,10 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Ledger",
+  title: "Simple Ledger",
   description: "Local bookkeeping",
   // "Add to Home Screen" on iPhone opens it full-screen with this name.
-  appleWebApp: { capable: true, title: "Ledger", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Simple Ledger", statusBarStyle: "default" },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

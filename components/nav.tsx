@@ -104,7 +104,7 @@ export function Nav({ signOut }: { signOut?: () => Promise<void> }) {
         >
           <MenuIcon open={open} />
         </button>
-        <span className="font-semibold tracking-tight">Ledger</span>
+        <span className="font-semibold tracking-tight">Simple Ledger</span>
         {current && <span className="truncate text-muted-foreground">· {current.label}</span>}
       </header>
 
@@ -126,7 +126,7 @@ export function Nav({ signOut }: { signOut?: () => Promise<void> }) {
 
       {/* Tablets and up: the sidebar. */}
       <nav className="no-print hidden w-52 shrink-0 border-r bg-muted/40 px-3 py-6 md:block">
-        <div className="mb-6 px-3 text-lg font-semibold tracking-tight">Ledger</div>
+        <div className="mb-6 px-3 text-lg font-semibold tracking-tight">Simple Ledger</div>
         <NavLinks pathname={pathname} signOut={signOut} />
       </nav>
     </>

@@ -59,7 +59,7 @@ export function InvoiceDocument({
     .join("\n");
 
   return (
-    <Document title={`Invoice ${invoice.number}`} author={settings.businessName} creator="Ledger">
+    <Document title={`Invoice ${invoice.number}`} author={settings.businessName} creator="Simple Ledger">
       <Page size="LETTER" style={s.page}>
         {invoice.voidedAt && <Text style={s.void}>VOID</Text>}
 

@@ -21,7 +21,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
     <div className="mx-auto mt-[12vh] max-w-sm">
       <Card>
         <CardHeader>
-          <CardTitle>Ledger</CardTitle>
+          <CardTitle>Simple Ledger</CardTitle>
           <CardDescription>Sign in to open your books.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

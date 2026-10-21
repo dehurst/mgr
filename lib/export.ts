@@ -215,7 +215,7 @@ export async function exportZip(db: Db, today: DateStr): Promise<Uint8Array> {
   for (const t of await exportTables(db, today)) files[t.file] = strToU8("﻿" + toCsv(t.rows));
   files["README.txt"] = strToU8(
     [
-      `Ledger export, ${today}`,
+      `Simple Ledger export, ${today}`,
       "",
       "One CSV per kind of record. Amounts are dollars (1234.56); dates are YYYY-MM-DD; times are UTC.",
       "Voided invoices, payments, and income are included with a 'Voided at' date; reports leave them out.",

@@ -1,4 +1,4 @@
-# Ledger
+# Simple Ledger
 
 Bookkeeping for a one-person business: invoices, payments you receive, expenses, payees (1099
 contractors), and tax-time reports. It runs online (Vercel, with Google sign-in that only lets your

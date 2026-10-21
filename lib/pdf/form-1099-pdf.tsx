@@ -51,7 +51,7 @@ export function Form1099Document({
   const payer = [settings.businessName, settings.address, settings.phone].filter(Boolean).join("\n");
   const recipientName = [payee.name, payee.businessName].filter(Boolean).join("\n");
   return (
-    <Document title={`Form 1099-NEC ${year} - ${payee.name}`} author={settings.businessName} creator="Ledger">
+    <Document title={`Form 1099-NEC ${year} - ${payee.name}`} author={settings.businessName} creator="Simple Ledger">
       <Page size="LETTER" style={s.page}>
         <View style={s.form}>
           <View style={s.colL}>
