@@ -5,6 +5,8 @@ import { formatCents } from "@/lib/money";
 import type { MonthTotal } from "@/lib/reports/expenses";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** Keep a label or tooltip that sits over an edge month inside the chart. */
+const edgeAlign = (i: number, reach: number) => (i >= 12 - reach ? "right-0" : i < reach ? "left-0" : "");
 // Categorical slots 1 and 2, validated as a pair on the white card surface (contrast + color-blind checks).
 const BUSINESS = "#2a78d6";
 const PERSONAL = "#eb6834";
@@ -70,7 +72,7 @@ export function MonthChart({
                 type="button"
                 aria-pressed={showPersonal === value}
                 onClick={() => setShowPersonal(value as boolean)}
-                className={`rounded px-2 py-0.5 ${showPersonal === value ? "bg-muted font-medium text-foreground" : ""}`}
+                className={`rounded px-2.5 py-1 sm:px-2 sm:py-0.5 ${showPersonal === value ? "bg-muted font-medium text-foreground" : ""}`}
               >
                 {label}
               </button>
@@ -78,9 +80,10 @@ export function MonthChart({
           </div>
         )}
       </div>
-      <div className="flex">
+      {/* mt-3 leaves room for the biggest month's label above the tallest bar. */}
+      <div className="mt-3 flex">
         {/* Y axis */}
-        <div className="relative h-48 w-14 shrink-0 text-right text-[11px] text-muted-foreground">
+        <div className="relative h-48 w-11 shrink-0 sm:w-14 text-right text-[11px] text-muted-foreground">
           {axis.map((t) => (
             <span key={t} className="tabular absolute right-2" style={{ bottom: `${(t / top) * 100}%`, transform: "translateY(50%)" }}>
               {tickLabel(t)}
@@ -88,7 +91,13 @@ export function MonthChart({
           ))}
         </div>
         {/* Plot */}
-        <div className="relative h-48 flex-1" onPointerLeave={() => setActive(null)}>
+        <div
+          className="relative h-48 flex-1"
+          // A mouse hides the tooltip on leaving; a tap keeps it until you tap elsewhere (blur).
+          onPointerLeave={(e) => {
+            if (e.pointerType === "mouse") setActive(null);
+          }}
+        >
           {axis.map((t) => (
             <div key={t} className="absolute inset-x-0 border-t border-border" style={{ bottom: `${(t / top) * 100}%` }} />
           ))}
@@ -110,7 +119,9 @@ export function MonthChart({
                   aria-label={label}
                   tabIndex={0}
                   className="relative flex h-full flex-1 items-end justify-center outline-none"
-                  onPointerEnter={() => setActive(i)}
+                  onPointerEnter={(e) => {
+                    if (e.pointerType === "mouse") setActive(i);
+                  }}
                   onFocus={() => setActive(i)}
                   onBlur={() => setActive(null)}
                 >
@@ -132,7 +143,7 @@ export function MonthChart({
                   {/* Label only the biggest month; the tooltip and the list below carry the rest. */}
                   {hasData && i === maxIdx && active === null && (
                     <span
-                      className="tabular pointer-events-none absolute -translate-y-full whitespace-nowrap pb-1 text-[11px] font-medium text-foreground"
+                      className={`tabular pointer-events-none absolute -translate-y-full whitespace-nowrap pb-1 text-[11px] font-medium text-foreground ${edgeAlign(i, 2)}`}
                       style={{ bottom: `${pct}%` }}
                     >
                       {formatCents(shown(m))}
@@ -140,9 +151,7 @@ export function MonthChart({
                   )}
                   {active === i && (
                     <div
-                      className={`pointer-events-none absolute z-10 grid gap-0.5 whitespace-nowrap rounded-md border bg-background px-2.5 py-1.5 text-xs shadow-md ${
-                        i >= 9 ? "right-0" : i <= 2 ? "left-0" : ""
-                      }`}
+                      className={`pointer-events-none absolute z-10 grid gap-0.5 whitespace-nowrap rounded-md border bg-background px-2.5 py-1.5 text-xs shadow-md ${edgeAlign(i, 3)}`}
                       style={{ bottom: `calc(${Math.min(pct, 55)}% + 8px)` }}
                     >
                       <div className="font-semibold">
@@ -163,10 +172,12 @@ export function MonthChart({
         </div>
       </div>
       {/* X axis */}
-      <div className="flex pl-14 text-[11px] text-muted-foreground">
+      <div className="flex pl-11 text-[11px] text-muted-foreground sm:pl-14" aria-hidden="true">
         {MONTHS.map((m) => (
           <span key={m} className="flex-1 text-center">
-            {m}
+            {/* Phones: J F M …; wider screens: Jan Feb Mar … */}
+            <span className="sm:hidden">{m[0]}</span>
+            <span className="hidden sm:inline">{m}</span>
           </span>
         ))}
       </div>

@@ -67,14 +67,15 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
             <CardTitle>Expenses by month, {chartYear}</CardTitle>
             {yearPersonal > 0 && <CardDescription>Only business expenses count toward profit and taxes.</CardDescription>}
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 sm:text-right">
+          <div className="grid w-full grid-cols-3 gap-x-4 sm:flex sm:w-auto sm:flex-wrap sm:gap-x-6 sm:gap-y-2 sm:text-right">
             {yearPersonal > 0 && (
               <>
                 <YearTotal label="Personal" cents={yearPersonal} />
                 <YearTotal label="Total spent" cents={yearBusiness + yearPersonal} />
               </>
             )}
-            <YearTotal label={`Business, ${chartYear}`} cents={yearBusiness} strong />
+            {/* Phones: business first, since it's the number that counts. */}
+            <YearTotal label={<>Business<span className="hidden sm:inline">, {chartYear}</span></>} cents={yearBusiness} strong className="-order-1 sm:order-none" />
           </div>
         </CardHeader>
         <CardContent>
@@ -176,9 +177,9 @@ export default async function ExpensesPage({ searchParams }: PageProps<"/expense
   );
 }
 
-function YearTotal({ label, cents, strong }: { label: string; cents: number; strong?: boolean }) {
+function YearTotal({ label, cents, strong, className }: { label: React.ReactNode; cents: number; strong?: boolean; className?: string }) {
   return (
-    <div>
+    <div className={className}>
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`tabular text-base sm:text-xl ${strong ? "font-semibold" : "text-muted-foreground"}`}>{formatCents(cents)}</div>
     </div>
